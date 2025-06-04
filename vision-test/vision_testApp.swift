@@ -9,9 +9,9 @@ import SwiftUI
 
 @main
 struct vision_testApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+  var body: some Scene {
+    WindowGroup {
+      HandDetectionContentView()
     }
+  }
 }
