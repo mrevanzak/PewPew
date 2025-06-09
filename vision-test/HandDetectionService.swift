@@ -107,8 +107,8 @@ class HandDetectionService: ObservableObject {
 
     // Swap x and y coordinates to match camera orientation
     // Use the original y as x (with mirroring), and original x as y
-    let x = (1.0 - normalizedRect.origin.y - normalizedRect.height) * viewSize.width
-    let y = normalizedRect.origin.x * viewSize.height
+    let y = (1.0 - normalizedRect.origin.y - normalizedRect.height) * viewSize.width
+    let x = (1.0 - normalizedRect.origin.x - normalizedRect.width) * viewSize.height
     let width = normalizedRect.height * viewSize.width
     let height = normalizedRect.width * viewSize.height
 

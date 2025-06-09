@@ -94,6 +94,13 @@ class CameraManager: NSObject, ObservableObject {
       session.addOutput(videoOutput)
     }
 
+    // Set initial video orientation
+    if let connection = videoOutput.connection(with: .video) {
+      if connection.isVideoOrientationSupported {
+        connection.videoOrientation = .landscapeRight
+      }
+    }
+
     // Set session quality
     session.sessionPreset = .high
 
