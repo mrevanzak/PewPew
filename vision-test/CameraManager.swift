@@ -95,7 +95,7 @@ class CameraManager: NSObject, ObservableObject {
     }
 
     // Set session quality
-    session.sessionPreset = .medium
+    session.sessionPreset = .high
 
     session.commitConfiguration()
   }
