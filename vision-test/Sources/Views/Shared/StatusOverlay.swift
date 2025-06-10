@@ -14,7 +14,7 @@ struct StatusOverlayView: View {
   var body: some View {
     VStack {
       HStack {
-        StatusInfoCard(viewModel: viewModel)
+        StatusInfoCard(handDetectionService: viewModel.handDetectionService)
         Spacer()
         ScoreCard(score: viewModel.score)
       }

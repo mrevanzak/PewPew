@@ -116,7 +116,8 @@ struct MoleSpriteView: View {
         scene.size = viewSize
         scene.scaleMode = .aspectFill
         return scene
-      }()
+      }(),
+      options: [.allowsTransparency]
     )
   }
 }
@@ -138,25 +139,25 @@ struct InteractiveShape: View {
 
 // MARK: - Status Info Card
 struct StatusInfoCard: View {
-  @ObservedObject var viewModel: GameViewModel
+  @ObservedObject var handDetectionService: HandDetectionService
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       HStack {
         Circle()
-          .fill(viewModel.handDetectionService.handDetectionData.isDetected ? .green : .red)
+          .fill(handDetectionService.handDetectionData.isDetected ? .green : .red)
           .frame(width: 8, height: 8)
         Text("Hand Detected")
           .font(.caption)
           .fontWeight(.medium)
       }
 
-      Text("Hands: \(viewModel.handDetectionService.handDetectionData.fingerPointsPerHand.count)")
+      Text("Hands: \(handDetectionService.handDetectionData.fingerPointsPerHand.count)")
         .font(.caption2)
         .foregroundColor(.secondary)
 
       Text(
-        "Confidence: \(String(format: "%.2f", viewModel.handDetectionService.handDetectionData.confidence))"
+        "Confidence: \(String(format: "%.2f", handDetectionService.handDetectionData.confidence))"
       )
       .font(.caption2)
       .foregroundColor(.secondary)
