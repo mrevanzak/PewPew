@@ -11,7 +11,7 @@ import SwiftUI
 /// SpriteKit scene for animated mole sprites
 /// Creates multiple animated moles at random edge positions
 class MoleScene: SKScene {
-  private let moleCount = 6  // Number of moles to spawn
+  private let moleCount = 15  // Number of moles to spawn
 
   override func didMove(to view: SKView) {
     backgroundColor = .clear  // Transparent background for overlay
@@ -35,8 +35,25 @@ class MoleScene: SKScene {
     // Create multiple moles at random edge positions
     for _ in 0..<moleCount {
       let sprite = SKSpriteNode(texture: frames[0])
-      sprite.position = randomEdgePosition()
+      let edgeInfo = randomEdgePosition()
+      sprite.position = edgeInfo.position
       sprite.zPosition = 1
+      sprite.size = CGSize(width: 250, height: 250)
+
+      // Apply rotation based on edge position
+      switch edgeInfo.edge {
+      case "right":
+        sprite.zRotation = CGFloat.pi / 2  // -90 degrees
+      case "left":
+        sprite.zRotation = -CGFloat.pi / 2  // 90 degrees
+      case "top":
+        sprite.zRotation = CGFloat.pi  // 180 degrees
+      case "bottom":
+        sprite.zRotation = 0  // 0 degrees (default)
+      default:
+        sprite.zRotation = 0
+      }
+
       addChild(sprite)
 
       // Random animation timing for variety
@@ -54,35 +71,38 @@ class MoleScene: SKScene {
   }
 
   /// Generate random position along the edges of the screen
-  /// - Returns: CGPoint representing a position near the edge
-  private func randomEdgePosition() -> CGPoint {
+  /// - Returns: Tuple containing position and edge type
+  private func randomEdgePosition() -> (position: CGPoint, edge: String) {
     let margin: CGFloat = 50  // Distance from actual edge
     let edges = ["top", "bottom", "left", "right"]
     let randomEdge = edges.randomElement()!
 
+    let position: CGPoint
     switch randomEdge {
     case "top":
-      return CGPoint(
+      position = CGPoint(
         x: CGFloat.random(in: margin...(size.width - margin)),
         y: size.height - margin
       )
     case "bottom":
-      return CGPoint(
+      position = CGPoint(
         x: CGFloat.random(in: margin...(size.width - margin)),
         y: margin
       )
     case "left":
-      return CGPoint(
+      position = CGPoint(
         x: margin,
         y: CGFloat.random(in: margin...(size.height - margin))
       )
     case "right":
-      return CGPoint(
+      position = CGPoint(
         x: size.width - margin,
         y: CGFloat.random(in: margin...(size.height - margin))
       )
     default:
-      return CGPoint(x: size.width / 2, y: size.height / 2)
+      position = CGPoint(x: size.width / 2, y: size.height / 2)
     }
+
+    return (position: position, edge: randomEdge)
   }
 }
