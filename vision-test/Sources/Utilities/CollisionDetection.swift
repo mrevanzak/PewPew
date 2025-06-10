@@ -22,6 +22,37 @@ struct CollisionDetection {
     }
   }
 
+  /// Check if finger points collide with a shape
+  /// - Parameters:
+  ///   - fingerPoints: Array of finger point arrays (per hand)
+  ///   - shapeFrame: Frame of the target shape
+  ///   - viewSize: Size of the view for coordinate conversion
+  /// - Returns: Collision result with details
+  static func checkFingerCollision(
+    fingerPoints: [[CGPoint]],
+    shapeFrame: CGRect,
+    viewSize: CGSize
+  ) -> CollisionResult {
+    for handPoints in fingerPoints {
+      for point in handPoints {
+        // Convert normalized coordinates to view coordinates
+        let viewPoint = CGPoint(
+          x: (1 - point.x) * viewSize.width,
+          y: (1 - point.y) * viewSize.height
+        )
+
+        if shapeFrame.contains(viewPoint) {
+          return CollisionResult(
+            hasCollision: true,
+            overlapPercentage: 1.0,
+            collisionPoint: viewPoint
+          )
+        }
+      }
+    }
+    return CollisionResult.noCollision
+  }
+
   /// Check if a specific point is within any hand bounding box
   /// - Parameters:
   ///   - point: Point to check
