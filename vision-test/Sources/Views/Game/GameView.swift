@@ -85,9 +85,6 @@ struct GameOverlaysView: View {
 
   var body: some View {
     ZStack {
-      // Mole sprites
-      MoleSpriteView(viewSize: viewSize)
-
       // Real-time finger tracking points - always visible and optimized
       FingerPointsOverlay(
         handDetectionService: viewModel.handDetectionService,
@@ -98,42 +95,29 @@ struct GameOverlaysView: View {
       if viewModel.isShapeVisible {
         InteractiveShape(
           size: viewModel.shapeSize,
-          color: viewModel.shapeColor
+          color: viewModel.currentShapeColor,
+          position: viewModel.shapePosition
         )
       }
     }
   }
 }
 
-// MARK: - Mole Sprite View
-struct MoleSpriteView: View {
-  let viewSize: CGSize
-
-  var body: some View {
-    SpriteView(
-      scene: {
-        let scene = MoleScene()
-        scene.size = viewSize
-        scene.scaleMode = .aspectFill
-        return scene
-      }(),
-      options: [.allowsTransparency]
-    )
-  }
-}
 
 // MARK: - Interactive Shape
 struct InteractiveShape: View {
   let size: CGFloat
   let color: Color
+  let position: CGPoint
 
   var body: some View {
     Circle()
       .fill(color)
       .frame(width: size, height: size)
-      .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
+      .position(position)
+      .shadow(color: color.opacity(0.4), radius: 15, x: 0, y: 5)
       .scaleEffect(1.0)
-      .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: UUID())
+      .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: UUID())
   }
 }
 
