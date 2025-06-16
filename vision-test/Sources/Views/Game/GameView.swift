@@ -46,7 +46,7 @@ struct CameraBackgroundView: View {
   var body: some View {
     Group {
       if viewModel.cameraManager.permissionGranted {
-        CameraView(session: viewModel.cameraManager.session)
+        CameraView(cameraManager: viewModel.cameraManager, handDetectionService: viewModel.handDetectionService)
       } else {
         CameraPermissionView()
       }
@@ -136,7 +136,7 @@ struct StatusInfoCard: View {
           .fontWeight(.medium)
       }
 
-      Text("Hands: \(handDetectionService.handDetectionData.fingerPointsPerHand.count)")
+      Text("Hands: \(handDetectionService.handDetectionData.hands.count)")
         .font(.caption2)
         .foregroundColor(.secondary)
 

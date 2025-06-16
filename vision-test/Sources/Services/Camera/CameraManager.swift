@@ -28,6 +28,9 @@ class CameraManager: NSObject, ObservableObject {
   // Published properties for UI updates
   @Published var isSessionRunning = false
   @Published var permissionGranted = false
+  
+  // Preview layer for coordinate conversion
+  private var previewLayer: AVCaptureVideoPreviewLayer?
 
   init(handDetectionService: HandDetectionService) {
     self.handDetectionService = handDetectionService
@@ -38,6 +41,17 @@ class CameraManager: NSObject, ObservableObject {
 
     // Setup camera session
     setupSession()
+  }
+  
+  /// Get the preview layer for camera display
+  func getPreviewLayer() -> AVCaptureVideoPreviewLayer {
+    if previewLayer == nil {
+      previewLayer = AVCaptureVideoPreviewLayer(session: session)
+      previewLayer?.videoGravity = .resizeAspectFill
+      // Provide preview layer to hand detection service for coordinate conversion
+      handDetectionService.setPreviewLayer(previewLayer!)
+    }
+    return previewLayer!
   }
 
   /// Check and request camera permission
@@ -70,7 +84,7 @@ class CameraManager: NSObject, ObservableObject {
 
     session.beginConfiguration()
 
-    // Add camera input
+    // Add camera input (prefer front camera for hand detection)
     guard
       let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
       let input = try? AVCaptureDeviceInput(device: device)
@@ -84,24 +98,18 @@ class CameraManager: NSObject, ObservableObject {
       session.addInput(input)
     }
 
-    // Configure video output
+    // Configure video output for hand detection
     videoOutput.setSampleBufferDelegate(self, queue: videoQueue)
+    videoOutput.alwaysDiscardsLateVideoFrames = true
     videoOutput.videoSettings = [
-      kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+      kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
     ]
 
     if session.canAddOutput(videoOutput) {
       session.addOutput(videoOutput)
     }
 
-    // Set initial video orientation
-    if let connection = videoOutput.connection(with: .video) {
-      if connection.isVideoOrientationSupported {
-        connection.videoOrientation = .landscapeRight
-      }
-    }
-
-    // Set session quality
+    // Set session quality for better hand detection
     session.sessionPreset = .high
 
     session.commitConfiguration()

@@ -154,9 +154,9 @@ class GameViewModel: ObservableObject {
       height: shapeSize
     )
 
-    // Use the improved collision detection from utilities
+    // Use the improved collision detection from utilities with new hand structure
     let collision = CollisionDetection.checkFingerCollision(
-      fingerPoints: handDetectionService.handDetectionData.fingerPointsPerHand,
+      hands: handDetectionService.handDetectionData.hands,
       shapeFrame: shapeFrame,
       viewSize: viewSize
     )

@@ -8,7 +8,7 @@
 import CoreGraphics
 import Foundation
 
-/// Utility class for detecting collisions between hand bounding boxes and UI shapes
+/// Utility class for detecting collisions between hand points and UI shapes
 struct CollisionDetection {
 
   /// Check if any hand bounding box intersects with a target shape
@@ -22,9 +22,37 @@ struct CollisionDetection {
     }
   }
 
-  /// Check if finger points collide with a shape
+  /// Check if finger points collide with a shape - Enhanced version for new hand structure
   /// - Parameters:
-  ///   - fingerPoints: Array of finger point arrays (per hand)
+  ///   - hands: Array of HandPoints structures
+  ///   - shapeFrame: Frame of the target shape
+  ///   - viewSize: Size of the view for coordinate conversion
+  /// - Returns: Collision result with details
+  static func checkFingerCollision(
+    hands: [HandPoints],
+    shapeFrame: CGRect,
+    viewSize: CGSize
+  ) -> CollisionResult {
+    for hand in hands {
+      // Check all finger points for collision
+      let allPoints = getAllHandPoints(from: hand)
+      
+      for point in allPoints {
+        if shapeFrame.contains(point) {
+          return CollisionResult(
+            hasCollision: true,
+            overlapPercentage: 1.0,
+            collisionPoint: point
+          )
+        }
+      }
+    }
+    return CollisionResult.noCollision
+  }
+  
+  /// Legacy method for backward compatibility
+  /// - Parameters:
+  ///   - fingerPoints: Array of finger point arrays (per hand) - deprecated
   ///   - shapeFrame: Frame of the target shape
   ///   - viewSize: Size of the view for coordinate conversion
   /// - Returns: Collision result with details
@@ -51,6 +79,25 @@ struct CollisionDetection {
       }
     }
     return CollisionResult.noCollision
+  }
+  
+  /// Extract all points from a hand structure for collision detection
+  /// - Parameter hand: HandPoints structure
+  /// - Returns: Array of all CGPoints from the hand
+  private static func getAllHandPoints(from hand: HandPoints) -> [CGPoint] {
+    var allPoints: [CGPoint] = []
+    
+    // Add wrist
+    allPoints.append(hand.wrist)
+    
+    // Add all finger points
+    allPoints.append(contentsOf: hand.thumb)
+    allPoints.append(contentsOf: hand.index)
+    allPoints.append(contentsOf: hand.middle)
+    allPoints.append(contentsOf: hand.ring)
+    allPoints.append(contentsOf: hand.little)
+    
+    return allPoints
   }
 
   /// Check if a specific point is within any hand bounding box

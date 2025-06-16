@@ -11,18 +11,26 @@ import Foundation
 import Vision
 
 /// Service responsible for hand detection and tracking
-/// Uses Vision framework to analyze camera frames and detect hand positions
+/// Uses Vision framework to analyze camera frames and detect hand positions with enhanced accuracy
 class HandDetectionService: ObservableObject {
   // Published properties for UI updates
   @Published var handDetectionData = HandDetectionData.empty
 
   // Vision request for hand pose detection
   private var handPoseRequest: VNDetectHumanHandPoseRequest
+  
+  // Preview layer reference for coordinate conversion
+  weak var previewLayer: AVCaptureVideoPreviewLayer?
 
   init() {
     // Initialize hand pose detection request
     handPoseRequest = VNDetectHumanHandPoseRequest()
     handPoseRequest.maximumHandCount = 10  // Detect up to 10 hands
+  }
+  
+  /// Set the preview layer for coordinate conversion
+  func setPreviewLayer(_ layer: AVCaptureVideoPreviewLayer) {
+    previewLayer = layer
   }
 
   /// Process a sample buffer from camera to detect hands
@@ -33,7 +41,7 @@ class HandDetectionService: ObservableObject {
     }
 
     // Create vision request handler
-    let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+    let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
 
     do {
       // Perform hand detection
@@ -45,6 +53,9 @@ class HandDetectionService: ObservableObject {
       }
     } catch {
       print("Failed to perform hand detection: \(error)")
+      DispatchQueue.main.async { [weak self] in
+        self?.handDetectionData = HandDetectionData.empty
+      }
     }
   }
 
@@ -55,41 +66,109 @@ class HandDetectionService: ObservableObject {
       return
     }
 
-    // Extract finger points for each hand
-    let allFingerPoints: [[CGPoint]] = results.compactMap { observation in
+    // Extract hand points for each detected hand
+    let detectedHands: [HandPoints] = results.compactMap { observation in
       guard observation.confidence > 0.5 else { return nil }
-      guard let recognizedPoints = try? observation.recognizedPoints(.all) else {
+      
+      do {
+        // Get all finger points with proper sorting
+        let thumbPoints = try observation.recognizedPoints(.thumb).toSortedThumbArray()
+        let indexPoints = try observation.recognizedPoints(.indexFinger).toSortedIndexArray()
+        let middlePoints = try observation.recognizedPoints(.middleFinger).toSortedMiddleArray()
+        let ringPoints = try observation.recognizedPoints(.ringFinger).toSortedRingArray()
+        let littlePoints = try observation.recognizedPoints(.littleFinger).toSortedLittleArray()
+        
+        // Convert to UIKit coordinates
+        let thumbPointsFixed = thumbPoints.map { $0.location.toUIKitCoordinates(previewLayer: previewLayer) }
+        let indexPointsFixed = indexPoints.map { $0.location.toUIKitCoordinates(previewLayer: previewLayer) }
+        let middlePointsFixed = middlePoints.map { $0.location.toUIKitCoordinates(previewLayer: previewLayer) }
+        let ringPointsFixed = ringPoints.map { $0.location.toUIKitCoordinates(previewLayer: previewLayer) }
+        let littlePointsFixed = littlePoints.map { $0.location.toUIKitCoordinates(previewLayer: previewLayer) }
+        let wristPointFixed = try observation.recognizedPoint(.wrist).location.toUIKitCoordinates(previewLayer: previewLayer)
+        
+        let hand = HandPoints(
+          wrist: wristPointFixed,
+          thumb: thumbPointsFixed,
+          index: indexPointsFixed,
+          middle: middlePointsFixed,
+          ring: ringPointsFixed,
+          little: littlePointsFixed
+        )
+        return hand
+      } catch {
+        print("Error processing hand points: \(error)")
         return nil
       }
-
-      // List of all finger joint keys
-      let fingerKeys: [VNHumanHandPoseObservation.JointName] = [
-        .thumbTip, .thumbIP, .thumbMP, .thumbCMC,
-        .indexTip, .indexDIP, .indexPIP, .indexMCP,
-        .middleTip, .middleDIP, .middlePIP, .middleMCP,
-        .ringTip, .ringDIP, .ringPIP, .ringMCP,
-        .littleTip, .littleDIP, .littlePIP, .littleMCP,
-      ]
-
-      let points: [CGPoint] = fingerKeys.compactMap { key in
-        if let point = recognizedPoints[key], point.confidence > 0.5 {
-          return CGPoint(x: point.location.x, y: point.location.y)
-        }
-        return nil
-      }
-      return points
     }
 
     // Calculate average confidence
-    let averageConfidence =
-      results.isEmpty ? 0.0 : results.reduce(0.0) { $0 + $1.confidence } / Float(results.count)
+    let averageConfidence = results.isEmpty ? 0.0 : results.reduce(0.0) { $0 + $1.confidence } / Float(results.count)
 
     // Update published properties
     handDetectionData = HandDetectionData(
-      boundingBoxes: [],  // Will be calculated if needed
-      fingerPointsPerHand: allFingerPoints,
-      isDetected: !allFingerPoints.isEmpty,
+      hands: detectedHands,
+      isDetected: !detectedHands.isEmpty,
       confidence: averageConfidence
     )
+  }
+}
+
+// MARK: - Extensions for proper hand joint sorting
+extension Dictionary<VNHumanHandPoseObservation.JointName, VNRecognizedPoint> {
+  func toSortedThumbArray() -> [VNRecognizedPoint] {
+    var arr: [VNRecognizedPoint] = []
+    arr.append(self[.thumbTip]!)
+    arr.append(self[.thumbIP]!)
+    arr.append(self[.thumbMP]!)
+    arr.append(self[.thumbCMC]!)
+    return arr.reversed()
+  }
+  
+  func toSortedIndexArray() -> [VNRecognizedPoint] {
+    var arr: [VNRecognizedPoint] = []
+    arr.append(self[.indexTip]!)
+    arr.append(self[.indexDIP]!)
+    arr.append(self[.indexPIP]!)
+    arr.append(self[.indexMCP]!)
+    return arr.reversed()
+  }
+  
+  func toSortedMiddleArray() -> [VNRecognizedPoint] {
+    var arr: [VNRecognizedPoint] = []
+    arr.append(self[.middleTip]!)
+    arr.append(self[.middleDIP]!)
+    arr.append(self[.middlePIP]!)
+    arr.append(self[.middleMCP]!)
+    return arr.reversed()
+  }
+  
+  func toSortedRingArray() -> [VNRecognizedPoint] {
+    var arr: [VNRecognizedPoint] = []
+    arr.append(self[.ringTip]!)
+    arr.append(self[.ringDIP]!)
+    arr.append(self[.ringPIP]!)
+    arr.append(self[.ringMCP]!)
+    return arr.reversed()
+  }
+  
+  func toSortedLittleArray() -> [VNRecognizedPoint] {
+    var arr: [VNRecognizedPoint] = []
+    arr.append(self[.littleTip]!)
+    arr.append(self[.littleDIP]!)
+    arr.append(self[.littlePIP]!)
+    arr.append(self[.littleMCP]!)
+    return arr.reversed()
+  }
+}
+
+// MARK: - Coordinate conversion extension
+extension CGPoint {
+  func toUIKitCoordinates(previewLayer: AVCaptureVideoPreviewLayer?) -> CGPoint {
+    guard let previewLayer = previewLayer else {
+      // Fallback coordinate conversion if no preview layer
+      return CGPoint(x: x, y: 1 - y)
+    }
+    let avFoundationCoords = CGPoint(x: x, y: 1 - y)
+    return previewLayer.layerPointConverted(fromCaptureDevicePoint: avFoundationCoords)
   }
 }
