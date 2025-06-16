@@ -9,6 +9,7 @@ import AVFoundation
 import Combine
 import Foundation
 import Vision
+import UIKit
 
 /// Manager class for camera session and video processing
 /// Handles camera setup, permissions, and delegates video output for hand detection
@@ -31,6 +32,9 @@ class CameraManager: NSObject, ObservableObject {
   
   // Preview layer for coordinate conversion
   private var previewLayer: AVCaptureVideoPreviewLayer?
+  
+  // Video connection for orientation handling
+  private var videoConnection: AVCaptureConnection?
 
   init(handDetectionService: HandDetectionService) {
     self.handDetectionService = handDetectionService
@@ -41,6 +45,13 @@ class CameraManager: NSObject, ObservableObject {
 
     // Setup camera session
     setupSession()
+    
+    // Setup orientation observers
+    setupOrientationObservers()
+  }
+  
+  deinit {
+    NotificationCenter.default.removeObserver(self)
   }
   
   /// Get the preview layer for camera display
@@ -109,10 +120,65 @@ class CameraManager: NSObject, ObservableObject {
       session.addOutput(videoOutput)
     }
 
+    // Store video connection for orientation handling
+    videoConnection = videoOutput.connection(with: .video)
+    
+    // Set initial orientation
+    updateVideoOrientation()
+
     // Set session quality for better hand detection
     session.sessionPreset = .high
 
     session.commitConfiguration()
+  }
+  
+  /// Setup device orientation observers
+  private func setupOrientationObservers() {
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(orientationChanged),
+      name: UIDevice.orientationDidChangeNotification,
+      object: nil
+    )
+  }
+  
+  /// Handle device orientation change
+  @objc private func orientationChanged() {
+    updateVideoOrientation()
+  }
+  
+  /// Update video connection orientation based on device orientation
+  private func updateVideoOrientation() {
+    guard let videoConnection = videoConnection,
+          videoConnection.isVideoOrientationSupported else { return }
+    
+    DispatchQueue.main.async {
+      let deviceOrientation = UIDevice.current.orientation
+      let videoOrientation: AVCaptureVideoOrientation
+      
+      switch deviceOrientation {
+      case .portrait:
+        videoOrientation = .portrait
+      case .portraitUpsideDown:
+        videoOrientation = .portraitUpsideDown
+      case .landscapeLeft:
+        videoOrientation = .landscapeRight // Camera is mirrored
+      case .landscapeRight:
+        videoOrientation = .landscapeLeft // Camera is mirrored
+      default:
+        videoOrientation = .portrait
+      }
+      
+      videoConnection.videoOrientation = videoOrientation
+      
+      // Also update preview layer orientation
+      if let previewLayer = self.previewLayer {
+        previewLayer.connection?.videoOrientation = videoOrientation
+      }
+      
+      // Notify hand detection service of orientation change
+      self.handDetectionService.updateOrientation(videoOrientation)
+    }
   }
 
   /// Start camera session

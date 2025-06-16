@@ -40,11 +40,17 @@ class CameraPreviewView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupOverlay()
+        setupOrientationObserver()
     }
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupOverlay()
+        setupOrientationObserver()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     func setPreviewLayer(_ layer: AVCaptureVideoPreviewLayer) {
@@ -67,6 +73,23 @@ class CameraPreviewView: UIView {
         overlayLayer.fillColor = UIColor.blue.cgColor
         overlayLayer.lineWidth = 8
         overlayLayer.lineJoin = .round
+    }
+    
+    private func setupOrientationObserver() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(orientationChanged),
+            name: UIDevice.orientationDidChangeNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func orientationChanged() {
+        // Force layout update when orientation changes
+        DispatchQueue.main.async {
+            self.setNeedsLayout()
+            self.layoutIfNeeded()
+        }
     }
     
     /// Update hand points overlay with enhanced visualization

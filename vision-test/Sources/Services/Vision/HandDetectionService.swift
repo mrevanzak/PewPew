@@ -21,6 +21,9 @@ class HandDetectionService: ObservableObject {
   
   // Preview layer reference for coordinate conversion
   weak var previewLayer: AVCaptureVideoPreviewLayer?
+  
+  // Current video orientation for proper coordinate conversion
+  private var currentVideoOrientation: AVCaptureVideoOrientation = .portrait
 
   init() {
     // Initialize hand pose detection request
@@ -32,6 +35,27 @@ class HandDetectionService: ObservableObject {
   func setPreviewLayer(_ layer: AVCaptureVideoPreviewLayer) {
     previewLayer = layer
   }
+  
+  /// Update the current video orientation
+  func updateOrientation(_ orientation: AVCaptureVideoOrientation) {
+    currentVideoOrientation = orientation
+  }
+  
+  /// Get CGImagePropertyOrientation based on current video orientation
+  private func getImageOrientation() -> CGImagePropertyOrientation {
+    switch currentVideoOrientation {
+    case .portrait:
+      return .right
+    case .portraitUpsideDown:
+      return .left
+    case .landscapeLeft:
+      return .up
+    case .landscapeRight:
+      return .down
+    @unknown default:
+      return .right
+    }
+  }
 
   /// Process a sample buffer from camera to detect hands
   /// - Parameter sampleBuffer: Camera frame data
@@ -40,8 +64,13 @@ class HandDetectionService: ObservableObject {
       return
     }
 
-    // Create vision request handler
-    let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
+    // Create vision request handler with proper orientation
+    let imageOrientation = getImageOrientation()
+    let handler = VNImageRequestHandler(
+      cmSampleBuffer: sampleBuffer, 
+      orientation: imageOrientation, 
+      options: [:]
+    )
 
     do {
       // Perform hand detection
