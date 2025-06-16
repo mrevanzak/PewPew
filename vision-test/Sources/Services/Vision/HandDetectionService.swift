@@ -43,17 +43,20 @@ class HandDetectionService: ObservableObject {
   
   /// Get CGImagePropertyOrientation based on current video orientation
   private func getImageOrientation() -> CGImagePropertyOrientation {
+    // Since Info.plist only supports landscape orientations, we only handle those
     switch currentVideoOrientation {
-    case .portrait:
-      return .right
-    case .portraitUpsideDown:
-      return .left
     case .landscapeLeft:
       return .up
     case .landscapeRight:
       return .down
-    @unknown default:
+    case .portrait:
+      // Shouldn't happen due to Info.plist, but handle gracefully
       return .right
+    case .portraitUpsideDown:
+      // Shouldn't happen due to Info.plist, but handle gracefully
+      return .left
+    @unknown default:
+      return .up // Default to landscape left equivalent
     }
   }
 

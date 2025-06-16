@@ -156,17 +156,19 @@ class CameraManager: NSObject, ObservableObject {
       let deviceOrientation = UIDevice.current.orientation
       let videoOrientation: AVCaptureVideoOrientation
       
+      // Only handle landscape orientations as per Info.plist configuration
       switch deviceOrientation {
-      case .portrait:
-        videoOrientation = .portrait
-      case .portraitUpsideDown:
-        videoOrientation = .portraitUpsideDown
       case .landscapeLeft:
-        videoOrientation = .landscapeRight // Camera is mirrored
+        videoOrientation = .landscapeRight // Camera is mirrored for front camera
       case .landscapeRight:
-        videoOrientation = .landscapeLeft // Camera is mirrored
+        videoOrientation = .landscapeLeft // Camera is mirrored for front camera
+      case .portrait, .portraitUpsideDown:
+        // Device shouldn't rotate to portrait due to Info.plist, but handle gracefully
+        // Default to current orientation or landscape right
+        videoOrientation = self.videoConnection?.videoOrientation ?? .landscapeRight
       default:
-        videoOrientation = .portrait
+        // Handle unknown/face up/face down orientations
+        videoOrientation = .landscapeRight // Default to landscape right
       }
       
       videoConnection.videoOrientation = videoOrientation

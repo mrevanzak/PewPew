@@ -36,7 +36,6 @@ struct GameView: View {
       }
     }
     .ignoresSafeArea()
-    .supportedOrientations([.portrait, .portraitUpsideDown, .landscapeLeft, .landscapeRight])
     .persistentSystemOverlays(.hidden)
   }
 }
