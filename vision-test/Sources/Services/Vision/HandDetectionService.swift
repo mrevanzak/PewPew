@@ -22,7 +22,7 @@ class HandDetectionService: ObservableObject {
   init() {
     // Initialize hand pose detection request
     handPoseRequest = VNDetectHumanHandPoseRequest()
-    handPoseRequest.maximumHandCount = 10  // Detect up to 10 hands
+    handPoseRequest.maximumHandCount = 2  // Detect up to 10 hands
   }
   
   /// Process a sample buffer from camera to detect hands

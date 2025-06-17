@@ -8,13 +8,21 @@
 import SwiftUI
 import SpriteKit
 
-import SwiftUI
-import SpriteKit
-
 // MARK: - Custom SpriteKit Scene
-class GameScene: SKScene, ObservableObject {
+class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   private var circle1: SKShapeNode?
   private var circle2: SKShapeNode?
+  
+  var currentSequenceNumber = 1
+  var totalCirclesInSequence = 0
+  var sequenceLabel: SKLabelNode!
+  var score = 0
+  var scoreLabel: SKLabelNode!
+  
+  struct PhysicsCategory {
+    static let player: UInt32 = 0x1 << 0
+    static let target: UInt32 = 0x1 << 1
+  }
   
   override func didMove(to view: SKView) {
     // Set clear background
@@ -22,11 +30,33 @@ class GameScene: SKScene, ObservableObject {
     
     // Add some sample content to demonstrate the scene is working
     setupScene()
+    setupUI()
+    startSpawning()
   }
   
   private func setupScene() {
     // Create two circles that will be controlled by hand detection
+    physicsWorld.contactDelegate = self
+    physicsWorld.gravity = CGVector(dx: 0, dy: 0)
     createHandControlledCircles()
+  }
+  
+  func setupUI() {
+    // Score label
+    scoreLabel = SKLabelNode(fontNamed: "Arial-Bold")
+    scoreLabel.text = "Score: 0"
+    scoreLabel.fontSize = 24
+    scoreLabel.fontColor = .white
+    scoreLabel.position = CGPoint(x: 100, y: size.height - 50)
+    addChild(scoreLabel)
+    
+    // Sequence progress label
+    sequenceLabel = SKLabelNode(fontNamed: "Arial-Bold")
+    sequenceLabel.text = "Next: 1"
+    sequenceLabel.fontSize = 20
+    sequenceLabel.fontColor = .yellow
+    sequenceLabel.position = CGPoint(x: size.width - 100, y: size.height - 50)
+    addChild(sequenceLabel)
   }
   
   private func createHandControlledCircles() {
@@ -37,6 +67,11 @@ class GameScene: SKScene, ObservableObject {
     circle1?.lineWidth = 3
     circle1?.name = "circle1"
     circle1?.position = CGPoint(x: frame.width * 0.3, y: frame.height * 0.3)
+    circle1?.physicsBody = SKPhysicsBody(circleOfRadius: 25)
+    circle1?.physicsBody?.categoryBitMask = PhysicsCategory.player
+    circle1?.physicsBody?.contactTestBitMask = PhysicsCategory.target
+    circle1?.physicsBody?.collisionBitMask = 0
+    circle1?.physicsBody?.isDynamic = true
     if let circle1 = circle1 {
       addChild(circle1)
     }
@@ -48,6 +83,11 @@ class GameScene: SKScene, ObservableObject {
     circle2?.lineWidth = 3
     circle2?.name = "circle2"
     circle2?.position = CGPoint(x: frame.width * 0.7, y: frame.height * 0.7)
+    circle2?.physicsBody = SKPhysicsBody(circleOfRadius: 25)
+    circle2?.physicsBody?.categoryBitMask = PhysicsCategory.player
+    circle2?.physicsBody?.contactTestBitMask = PhysicsCategory.target
+    circle2?.physicsBody?.collisionBitMask = 0
+    circle1?.physicsBody?.isDynamic = true
     if let circle2 = circle2 {
       addChild(circle2)
     }
@@ -64,11 +104,11 @@ class GameScene: SKScene, ObservableObject {
       circle2?.alpha = 0.3
       return
     }
-        
+    
     // Make circles fully visible when hands are detected
     circle1?.alpha = 1.0
     circle2?.alpha = 1.0
-        
+    
     if let leftWristPoint = handData.leftWristPoint {
       let leftScenePoint = convertToSceneCoordinates(leftWristPoint)
       if let circle1 = circle1 {
@@ -129,7 +169,234 @@ class GameScene: SKScene, ObservableObject {
     tapEffect.run(sequence)
     addChild(tapEffect)
   }
+  
+  //MARK: - Spawning Logic
+  func startSpawning() {
+    let spawnAction = SKAction.run { [weak self] in
+      self?.spawnSequenceOfCircles()
+    }
+    let waitAction = SKAction.wait(forDuration: 3.0) // Spawn sequence every 3 seconds
+    let sequenceAction = SKAction.sequence([spawnAction, waitAction])
+    let repeatAction = SKAction.repeatForever(sequenceAction)
+    
+    run(repeatAction, withKey: "spawning")
+  }
+  
+  func updateSequenceLabel() {
+    sequenceLabel.text = "Next: \(currentSequenceNumber)/\(totalCirclesInSequence)"
+  }
+  
+  
+  func spawnSequenceOfCircles() {
+    // Reset sequence tracking
+    currentSequenceNumber = 1
+    
+    // Random number of circles in this sequence (3-6 circles)
+    totalCirclesInSequence = Int.random(in: 3...6)
+    
+    // Update UI
+    updateSequenceLabel()
+    
+    // Spawn all circles in the sequence
+    for i in 1...totalCirclesInSequence {
+      let delay = Double(i - 1) * 0.3 // Stagger spawning by 0.3 seconds
+      
+      let spawnAction = SKAction.run { [weak self] in
+        self?.spawnNumberedCircle(number: i)
+      }
+      let waitAction = SKAction.wait(forDuration: delay)
+      let delayedSpawn = SKAction.sequence([waitAction, spawnAction])
+      
+      run(delayedSpawn)
+    }
+  }
+  
+  func spawnNumberedCircle(number: Int) {
+    // Create circle
+    let radius = CGFloat.random(in: 25...35)
+    let circle = SKShapeNode(circleOfRadius: radius)
+    
+    // Color based on sequence position
+    let colors: [UIColor] = [.red, .green, .yellow, .orange, .purple, .cyan, .magenta, .brown]
+    circle.fillColor = colors[(number - 1) % colors.count]
+    circle.strokeColor = .white
+    circle.lineWidth = 2
+    
+    // Random position at top of screen
+    let randomX = CGFloat.random(in: radius...(size.width - radius))
+    circle.position = CGPoint(x: randomX, y: size.height + radius)
+    
+    // Store the sequence number in the node's name
+    circle.name = "circle_\(number)"
+    
+    // Add number label inside circle
+    let numberLabel = SKLabelNode(fontNamed: "Arial-Bold")
+    numberLabel.text = "\(number)"
+    numberLabel.fontSize = 20
+    numberLabel.fontColor = .white
+    numberLabel.position = CGPoint.zero
+    numberLabel.verticalAlignmentMode = .center
+    circle.addChild(numberLabel)
+    
+    // Add physics body
+    circle.physicsBody = SKPhysicsBody(circleOfRadius: radius)
+    circle.physicsBody?.categoryBitMask = PhysicsCategory.target
+    circle.physicsBody?.contactTestBitMask = PhysicsCategory.player
+    circle.physicsBody?.collisionBitMask = 0
+    circle.physicsBody?.isDynamic = true
+    
+    // Add movement
+    let randomVelocityX = CGFloat.random(in: -50...50)
+    let randomVelocityY = CGFloat.random(in: -150...(-80))
+    circle.physicsBody?.velocity = CGVector(dx: randomVelocityX, dy: randomVelocityY)
+    
+    addChild(circle)
+    
+    // Remove circle after time limit
+    let removeAction = SKAction.sequence([
+      SKAction.wait(forDuration: 8.0),
+      SKAction.removeFromParent()
+    ])
+    circle.run(removeAction, withKey: "autoRemove")
+  }
+  
+  // MARK: - Physics Contact
+  func didBegin(_ contact: SKPhysicsContact) {
+    var targetNode: SKNode?
+    
+    // Determine which node is the target circle
+    if contact.bodyA.categoryBitMask == PhysicsCategory.target {
+      targetNode = contact.bodyA.node
+    } else if contact.bodyB.categoryBitMask == PhysicsCategory.target {
+      targetNode = contact.bodyB.node
+    }
+    
+    guard let target = targetNode,
+          let nodeName = target.name,
+          let numberString = nodeName.components(separatedBy: "_").last,
+          let circleNumber = Int(numberString) else { return }
+    
+    // Check if this is the correct number in sequence
+    if circleNumber == currentSequenceNumber {
+      // Correct sequence!
+      handleCorrectHit(target: target, number: circleNumber)
+    } else {
+      // Wrong sequence!
+      handleWrongHit(target: target, number: circleNumber)
+    }
+  }
+  
+  func handleCorrectHit(target: SKNode, number: Int) {
+    // Add score
+    score += number * 10 // More points for later numbers in sequence
+    scoreLabel.text = "Score: \(score)"
+    
+    // Create success effect
+    createEffect(at: target.position, text: "+\(number * 10)", color: .green)
+    
+    // Remove the target
+    target.removeFromParent()
+    
+    // Progress to next number in sequence
+    currentSequenceNumber += 1
+    updateSequenceLabel()
+    
+    // Check if sequence is complete
+    if currentSequenceNumber > totalCirclesInSequence {
+      handleSequenceComplete()
+    }
+    
+    // Animate score label
+    animateScoreLabel()
+  }
+  
+  func handleWrongHit(target: SKNode, number: Int) {
+    // Penalty for wrong sequence
+    score = max(0, score - 20)
+    scoreLabel.text = "Score: \(score)"
+    
+    // Create error effect
+    createEffect(at: target.position, text: "WRONG!", color: .red)
+    
+    // Flash the target red
+    let flashRed = SKAction.colorize(with: .red, colorBlendFactor: 0.8, duration: 0.1)
+    let flashBack = SKAction.colorize(with: .clear, colorBlendFactor: 0, duration: 0.1)
+    let flashSequence = SKAction.sequence([flashRed, flashBack, flashRed, flashBack])
+    target.run(flashSequence)
+    
+    // Reset sequence (player must start over)
+    resetCurrentSequence()
+  }
+  
+  func handleSequenceComplete() {
+    // Bonus points for completing sequence
+    let bonusPoints = totalCirclesInSequence * 20
+    score += bonusPoints
+    scoreLabel.text = "Score: \(score)"
+    
+    // Create completion effect
+    createEffect(at: CGPoint(x: size.width/2, y: size.height/2),
+                 text: "SEQUENCE COMPLETE!\n+\(bonusPoints) BONUS",
+                 color: .yellow)
+    
+    // Reset for next sequence
+    currentSequenceNumber = 1
+    totalCirclesInSequence = 0
+    sequenceLabel.text = "Get Ready..."
+    
+    // Flash screen effect
+    let flashOverlay = SKSpriteNode(color: .yellow, size: size)
+    flashOverlay.alpha = 0.3
+    flashOverlay.position = CGPoint(x: size.width/2, y: size.height/2)
+    addChild(flashOverlay)
+    
+    let fadeOut = SKAction.fadeOut(withDuration: 0.5)
+    let remove = SKAction.removeFromParent()
+    flashOverlay.run(SKAction.sequence([fadeOut, remove]))
+  }
+  
+  func resetCurrentSequence() {
+    currentSequenceNumber = 1
+    updateSequenceLabel()
+    
+    // Flash sequence label red
+    let flashRed = SKAction.colorize(with: .red, colorBlendFactor: 1.0, duration: 0.2)
+    let flashBack = SKAction.colorize(with: .yellow, colorBlendFactor: 1.0, duration: 0.2)
+    sequenceLabel.run(SKAction.sequence([flashRed, flashBack]))
+  }
+  
+  func createEffect(at position: CGPoint, text: String, color: UIColor) {
+    let effectLabel = SKLabelNode(fontNamed: "Arial-Bold")
+    effectLabel.text = text
+    effectLabel.fontSize = 16
+    effectLabel.fontColor = color
+    effectLabel.position = position
+    effectLabel.numberOfLines = 0
+    addChild(effectLabel)
+    
+    // Animate the effect
+    let scaleUp = SKAction.scale(to: 1.5, duration: 0.2)
+    let fadeOut = SKAction.fadeOut(withDuration: 0.8)
+    let moveUp = SKAction.moveBy(x: 0, y: 50, duration: 1.0)
+    let remove = SKAction.removeFromParent()
+    
+    let effectSequence = SKAction.sequence([
+      scaleUp,
+      SKAction.group([fadeOut, moveUp]),
+      remove
+    ])
+    
+    effectLabel.run(effectSequence)
+  }
+  
+  func animateScoreLabel() {
+    let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)
+    let scaleDown = SKAction.scale(to: 1.0, duration: 0.1)
+    let scaleSequence = SKAction.sequence([scaleUp, scaleDown])
+    scoreLabel.run(scaleSequence)
+  }
 }
+
 
 // MARK: - SwiftUI Wrapper
 struct SpriteKitView: UIViewRepresentable {

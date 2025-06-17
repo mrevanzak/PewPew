@@ -10,43 +10,43 @@ import SwiftUI
 
 /// Main game view that orchestrates all components
 struct GameView: View {
-    @StateObject private var viewModel = GameViewModel()
-    @StateObject private var handDetectionService = HandDetectionService()
-    
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Camera background
-                CameraBackgroundView(viewModel: viewModel)
-                
-              SpriteView(viewModel: viewModel)
-                // Game overlays
-//                GameOverlaysView(viewModel: viewModel, viewSize: geometry.size)
-                
-                // Status overlay in safe area
-                StatusOverlayView(viewModel: viewModel)
-            }
-            .onAppear {
-                viewModel.updateViewSize(geometry.size)
-                viewModel.startGame()
-//                handDetectionService.startDetection() // Start hand detection
-            }
-            .onDisappear {
-                viewModel.stopGame()
-//                handDetectionService.stopDetection() // Stop hand detection
-            }
-            .onChange(of: geometry.size) { oldSize, newSize in
-                viewModel.updateViewSize(newSize)
-            }
-        }
-        .ignoresSafeArea()
+  @StateObject private var viewModel = GameViewModel()
+  @StateObject private var handDetectionService = HandDetectionService()
+  
+  var body: some View {
+    GeometryReader { geometry in
+      ZStack {
+        // Camera background
+        CameraBackgroundView(viewModel: viewModel)
+        
+        SpriteView(viewModel: viewModel)
+        // Game overlays
+        //                GameOverlaysView(viewModel: viewModel, viewSize: geometry.size)
+        
+        // Status overlay in safe area
+        StatusOverlayView(viewModel: viewModel)
+      }
+      .onAppear {
+        viewModel.updateViewSize(geometry.size)
+        viewModel.startGame()
+        //                handDetectionService.startDetection() // Start hand detection
+      }
+      .onDisappear {
+        viewModel.stopGame()
+        //                handDetectionService.stopDetection() // Stop hand detection
+      }
+      .onChange(of: geometry.size) { oldSize, newSize in
+        viewModel.updateViewSize(newSize)
+      }
     }
+    .ignoresSafeArea()
+  }
 }
 
 // MARK: - Camera Background View
 struct CameraBackgroundView: View {
   @ObservedObject var viewModel: GameViewModel
-
+  
   var body: some View {
     Group {
       if viewModel.cameraManager.permissionGranted {
@@ -65,12 +65,12 @@ struct CameraPermissionView: View {
       Image(systemName: "camera.fill")
         .font(.system(size: 60))
         .foregroundColor(.white.opacity(0.6))
-
+      
       Text("Camera Permission Required")
         .font(.title2)
         .fontWeight(.semibold)
         .foregroundColor(.white)
-
+      
       Text("Please enable camera access in System Preferences to play the game")
         .font(.body)
         .foregroundColor(.gray)
@@ -86,7 +86,7 @@ struct CameraPermissionView: View {
 struct GameOverlaysView: View {
   @ObservedObject var viewModel: GameViewModel
   let viewSize: CGSize
-
+  
   var body: some View {
     ZStack {
       // Real-time finger tracking points - always visible and optimized
@@ -94,7 +94,7 @@ struct GameOverlaysView: View {
         handDetectionService: viewModel.handDetectionService,
         viewSize: viewSize
       )
-
+      
       // Interactive shape (if visible)
       if viewModel.isShapeVisible {
         InteractiveShape(
@@ -113,7 +113,7 @@ struct InteractiveShape: View {
   let size: CGFloat
   let color: Color
   let position: CGPoint
-
+  
   var body: some View {
     Circle()
       .fill(color)
@@ -128,7 +128,7 @@ struct InteractiveShape: View {
 // MARK: - Status Info Card
 struct StatusInfoCard: View {
   @ObservedObject var handDetectionService: HandDetectionService
-
+  
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       HStack {
@@ -139,11 +139,11 @@ struct StatusInfoCard: View {
           .font(.caption)
           .fontWeight(.medium)
       }
-
+      
       Text("Hands: \(handDetectionService.handDetectionData.fingerPointsPerHand.count)")
         .font(.caption2)
         .foregroundColor(.secondary)
-
+      
       Text(
         "Confidence: \(String(format: "%.2f", handDetectionService.handDetectionData.confidence))"
       )
@@ -159,14 +159,14 @@ struct StatusInfoCard: View {
 // MARK: - Score Card
 struct ScoreCard: View {
   let score: Int
-
+  
   var body: some View {
     VStack(spacing: 4) {
       Text("SCORE")
         .font(.caption2)
         .fontWeight(.semibold)
         .foregroundColor(.secondary)
-
+      
       Text("\(score)")
         .font(.title)
         .fontWeight(.bold)

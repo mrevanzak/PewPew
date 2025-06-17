@@ -19,7 +19,7 @@ struct CameraView: UIViewRepresentable {
 
     // Create preview layer for camera feed
     let previewLayer = AVCaptureVideoPreviewLayer(session: session)
-    previewLayer.videoGravity = .resizeAspectFill
+    previewLayer.videoGravity = .resizeAspect
     view.layer.addSublayer(previewLayer)
 
     if previewLayer.connection?.isVideoRotationAngleSupported(180) ?? false {
