@@ -87,27 +87,6 @@ class GameScene: SKScene, ObservableObject {
       }
     }
     
-    
-//    // Convert wrist points to scene coordinates and update circle positions
-//    for (index, wristPoint) in handData.wristPoints.enumerated() {
-//      let scenePoint = convertToSceneCoordinates(wristPoint)
-//      print("Wrist \(index): \(wristPoint) -> Scene: \(scenePoint)")
-//      
-//      if index == 0, let circle1 = circle1 {
-//        // Smooth movement for circle 1
-//        let moveAction = SKAction.move(to: scenePoint, duration: 0.1)
-//        moveAction.timingMode = .easeOut
-//        circle1.run(moveAction)
-//        print("Moving circle1 to \(scenePoint)")
-//      } else if index == 1, let circle2 = circle2 {
-//        // Smooth movement for circle 2
-//        let moveAction = SKAction.move(to: scenePoint, duration: 0.1)
-//        moveAction.timingMode = .easeOut
-//        circle2.run(moveAction)
-//        print("Moving circle2 to \(scenePoint)")
-//      }
-//    }
-    
     // If only one hand is detected, hide the second circle
     if handData.fingerPointsPerHand.count == 1 {
       circle2?.alpha = 0.3
@@ -120,8 +99,8 @@ class GameScene: SKScene, ObservableObject {
     // Assuming the wrist points are normalized (0-1) coordinates
     // Flip Y coordinate since Vision framework uses bottom-left origin
     // while SpriteKit uses bottom-left origin (they should match)
-    let x = normalizedPoint.x * frame.width
-    let y = (1.0 - normalizedPoint.y) * frame.height // Flip Y if needed
+    let x = (1.0 - normalizedPoint.x) * frame.width
+    let y = normalizedPoint.y * frame.height // Flip Y if needed
     
     // Clamp to screen bounds with margin
     let margin: CGFloat = 30
