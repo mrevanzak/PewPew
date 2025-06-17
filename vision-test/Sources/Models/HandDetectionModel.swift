@@ -12,12 +12,20 @@ import Foundation
 struct HandDetectionData {
   let boundingBoxes: [CGRect]
   let fingerPointsPerHand: [[CGPoint]]
+  let leftFingerPoints: [CGPoint]
+  let rightFingerPoints: [CGPoint]
+  let leftWristPoint: CGPoint?
+  let rightWristPoint: CGPoint?
   let isDetected: Bool
   let confidence: Float
-
+  
   static let empty = HandDetectionData(
     boundingBoxes: [],
     fingerPointsPerHand: [],
+    leftFingerPoints: [],
+    rightFingerPoints: [],
+    leftWristPoint: nil,
+    rightWristPoint: nil,
     isDetected: false,
     confidence: 0.0
   )
@@ -28,7 +36,7 @@ struct CollisionResult {
   let hasCollision: Bool
   let overlapPercentage: CGFloat
   let collisionPoint: CGPoint?
-
+  
   static let noCollision = CollisionResult(
     hasCollision: false,
     overlapPercentage: 0.0,

@@ -22,8 +22,8 @@ struct CameraView: UIViewRepresentable {
     previewLayer.videoGravity = .resizeAspectFill
     view.layer.addSublayer(previewLayer)
 
-    if previewLayer.connection?.isVideoOrientationSupported ?? false {
-      previewLayer.connection?.videoOrientation = .landscapeRight
+    if previewLayer.connection?.isVideoRotationAngleSupported(180) ?? false {
+      previewLayer.connection?.videoRotationAngle = 180
     }
 
     return view

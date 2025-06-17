@@ -15,7 +15,7 @@ struct CollisionDetection {
   /// - Parameters:
   ///   - handBoxes: Array of hand bounding boxes in view coordinates
   ///   - shapeFrame: Frame of the target shape in view coordinates
-  /// - Returns: True if any hand intersects with the shape
+  /// - Returns: True if any hand intersectlmn s with the shape
   static func isHandCollidingWithShape(handBoxes: [CGRect], shapeFrame: CGRect) -> Bool {
     return handBoxes.contains { handBox in
       handBox.intersects(shapeFrame)

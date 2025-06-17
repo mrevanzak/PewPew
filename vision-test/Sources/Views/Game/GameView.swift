@@ -10,33 +10,37 @@ import SwiftUI
 
 /// Main game view that orchestrates all components
 struct GameView: View {
-  @StateObject private var viewModel = GameViewModel()
-
-  var body: some View {
-    GeometryReader { geometry in
-      ZStack {
-        // Camera background
-        CameraBackgroundView(viewModel: viewModel)
-
-        // Game overlays
-        GameOverlaysView(viewModel: viewModel, viewSize: geometry.size)
-
-        // Status overlay in safe area
-        StatusOverlayView(viewModel: viewModel)
-      }
-      .onAppear {
-        viewModel.updateViewSize(geometry.size)
-        viewModel.startGame()
-      }
-      .onDisappear {
-        viewModel.stopGame()
-      }
-      .onChange(of: geometry.size) { newSize in
-        viewModel.updateViewSize(newSize)
-      }
+    @StateObject private var viewModel = GameViewModel()
+    @StateObject private var handDetectionService = HandDetectionService()
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Camera background
+                CameraBackgroundView(viewModel: viewModel)
+                
+              SpriteView(viewModel: viewModel)
+                // Game overlays
+//                GameOverlaysView(viewModel: viewModel, viewSize: geometry.size)
+                
+                // Status overlay in safe area
+                StatusOverlayView(viewModel: viewModel)
+            }
+            .onAppear {
+                viewModel.updateViewSize(geometry.size)
+                viewModel.startGame()
+//                handDetectionService.startDetection() // Start hand detection
+            }
+            .onDisappear {
+                viewModel.stopGame()
+//                handDetectionService.stopDetection() // Stop hand detection
+            }
+            .onChange(of: geometry.size) { oldSize, newSize in
+                viewModel.updateViewSize(newSize)
+            }
+        }
+        .ignoresSafeArea()
     }
-    .ignoresSafeArea()
-  }
 }
 
 // MARK: - Camera Background View
@@ -145,6 +149,7 @@ struct StatusInfoCard: View {
       )
       .font(.caption2)
       .foregroundColor(.secondary)
+      
     }
     .padding(12)
     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
