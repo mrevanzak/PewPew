@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - Status Overlay View
 struct StatusOverlayView: View {
   @ObservedObject var viewModel: GameViewModel
-
+  
   var body: some View {
     VStack {
       HStack {
@@ -19,8 +19,8 @@ struct StatusOverlayView: View {
         ScoreCard(score: viewModel.score)
       }
       .padding()
-
+      
       Spacer()
-    }
+    }.safeAreaPadding(.top)
   }
 }
