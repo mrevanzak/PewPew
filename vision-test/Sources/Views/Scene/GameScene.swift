@@ -18,6 +18,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   var sequenceLabel: SKLabelNode!
   var score = 0
   var scoreLabel: SKLabelNode!
+  var isSequenceActive = false
   
   struct PhysicsCategory {
     static let player: UInt32 = 0x1 << 0
@@ -170,6 +171,10 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     addChild(tapEffect)
   }
   
+  func updateSequenceLabel() {
+    sequenceLabel.text = "Next: \(currentSequenceNumber)/\(totalCirclesInSequence)"
+  }
+  
   //MARK: - Spawning Logic
   func startSpawning() {
     let spawnAction = SKAction.run { [weak self] in
@@ -182,12 +187,15 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     run(repeatAction, withKey: "spawning")
   }
   
-  func updateSequenceLabel() {
-    sequenceLabel.text = "Next: \(currentSequenceNumber)/\(totalCirclesInSequence)"
-  }
-  
-  
   func spawnSequenceOfCircles() {
+    // Don't spawn if a sequence is already active
+    if isSequenceActive {
+      return
+    }
+    
+    // Mark sequence as active
+    isSequenceActive = true
+    
     // Reset sequence tracking
     currentSequenceNumber = 1
     
@@ -222,9 +230,10 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     circle.strokeColor = .white
     circle.lineWidth = 2
     
-    // Random position at top of screen
+    // Random position on screen (not just at top)
     let randomX = CGFloat.random(in: radius...(size.width - radius))
-    circle.position = CGPoint(x: randomX, y: size.height + radius)
+    let randomY = CGFloat.random(in: (radius + 150)...(size.height - radius - 100))
+    circle.position = CGPoint(x: randomX, y: randomY)
     
     // Store the sequence number in the node's name
     circle.name = "circle_\(number)"
@@ -243,21 +252,23 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     circle.physicsBody?.categoryBitMask = PhysicsCategory.target
     circle.physicsBody?.contactTestBitMask = PhysicsCategory.player
     circle.physicsBody?.collisionBitMask = 0
-    circle.physicsBody?.isDynamic = true
-    
-    // Add movement
-    let randomVelocityX = CGFloat.random(in: -50...50)
-    let randomVelocityY = CGFloat.random(in: -150...(-80))
-    circle.physicsBody?.velocity = CGVector(dx: randomVelocityX, dy: randomVelocityY)
+    circle.physicsBody?.isDynamic = false // Make circles static (no movement)
     
     addChild(circle)
     
-    // Remove circle after time limit
-    let removeAction = SKAction.sequence([
-      SKAction.wait(forDuration: 8.0),
+    // Remove circle after time limit and end sequence if time runs out
+    let timeoutAction = SKAction.sequence([
+      SKAction.wait(forDuration: 12.0),
+      SKAction.run { [weak self] in
+        // If this circle times out, end the sequence
+        if self?.isSequenceActive == true {
+          self?.handleSequenceTimeout()
+        }
+      },
+      SKAction.fadeOut(withDuration: 1.0),
       SKAction.removeFromParent()
     ])
-    circle.run(removeAction, withKey: "autoRemove")
+    circle.run(timeoutAction, withKey: "autoRemove")
   }
   
   // MARK: - Physics Contact
@@ -324,8 +335,31 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     let flashSequence = SKAction.sequence([flashRed, flashBack, flashRed, flashBack])
     target.run(flashSequence)
     
-    // Reset sequence (player must start over)
-    resetCurrentSequence()
+    // End current sequence and allow new one
+    endCurrentSequence()
+  }
+  
+  func endCurrentSequence() {
+    // Remove all remaining circles from current sequence
+    enumerateChildNodes(withName: "circle_*") { node, _ in
+      node.removeFromParent()
+    }
+    
+    // Reset sequence state
+    currentSequenceNumber = 1
+    totalCirclesInSequence = 0
+    isSequenceActive = false
+    sequenceLabel.text = "Sequence Failed!"
+    
+    // Flash sequence label red
+    let flashRed = SKAction.colorize(with: .red, colorBlendFactor: 1.0, duration: 0.3)
+    let flashBack = SKAction.colorize(with: .yellow, colorBlendFactor: 1.0, duration: 0.3)
+    let waitAction = SKAction.wait(forDuration: 1.0)
+    let resetText = SKAction.run { [weak self] in
+      self?.sequenceLabel.text = "Get Ready..."
+    }
+    
+    sequenceLabel.run(SKAction.sequence([flashRed, flashBack, waitAction, resetText]))
   }
   
   func handleSequenceComplete() {
@@ -342,6 +376,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     // Reset for next sequence
     currentSequenceNumber = 1
     totalCirclesInSequence = 0
+    isSequenceActive = false // Allow new sequences to spawn
     sequenceLabel.text = "Get Ready..."
     
     // Flash screen effect
@@ -355,14 +390,18 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     flashOverlay.run(SKAction.sequence([fadeOut, remove]))
   }
   
-  func resetCurrentSequence() {
-    currentSequenceNumber = 1
-    updateSequenceLabel()
+  func handleSequenceTimeout() {
+    // Penalty for letting sequence timeout
+    score = max(0, score - 30)
+    scoreLabel.text = "Score: \(score)"
     
-    // Flash sequence label red
-    let flashRed = SKAction.colorize(with: .red, colorBlendFactor: 1.0, duration: 0.2)
-    let flashBack = SKAction.colorize(with: .yellow, colorBlendFactor: 1.0, duration: 0.2)
-    sequenceLabel.run(SKAction.sequence([flashRed, flashBack]))
+    // Create timeout effect
+    createEffect(at: CGPoint(x: size.width/2, y: size.height/2),
+                 text: "TIME OUT!\n-30 POINTS",
+                 color: .red)
+    
+    // End current sequence
+    endCurrentSequence()
   }
   
   func createEffect(at position: CGPoint, text: String, color: UIColor) {
