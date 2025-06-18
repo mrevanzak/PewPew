@@ -98,19 +98,101 @@ struct GameOverlaysView: View {
         viewSize: viewSize
       )
 
-      // Interactive shape (if visible)
-      if viewModel.isShapeVisible {
-        InteractiveShape(
-          size: viewModel.shapeSize,
-          color: viewModel.currentShapeColor,
-          position: viewModel.shapePosition
-        )
+      // Sequence circles
+      ForEach(viewModel.sequenceCircles) { circle in
+        SequenceCircleView(circle: circle)
       }
 
-      Image("foreground")
-        .resizable()
-        .frame(width: viewSize.width, height: viewSize.height)
-        .position(CGPoint(x: viewSize.width / 2, y: viewSize.height / 2))
+      // Game over/win overlay
+      if viewModel.gameState.isGameOver || viewModel.gameState.isGameWon {
+        GameEndOverlay(viewModel: viewModel, viewSize: viewSize)
+      }
+
+      // Image("foreground")
+      //   .resizable()
+      //   .frame(width: viewSize.width, height: viewSize.height)
+      //   .position(CGPoint(x: viewSize.width / 2, y: viewSize.height / 2))
+    }
+  }
+}
+
+// MARK: - Sequence Circle View
+struct SequenceCircleView: View {
+  let circle: SequenceCircle
+
+  var body: some View {
+    ZStack {
+      Circle()
+        .fill(circle.color.opacity(0.8))
+        .frame(width: circle.size, height: circle.size)
+        .overlay(
+          Circle()
+            .stroke(Color.white, lineWidth: 3)
+        )
+        .shadow(color: circle.color.opacity(0.6), radius: 10, x: 0, y: 5)
+
+      Text("\(circle.sequenceNumber)")
+        .font(.title)
+        .fontWeight(.bold)
+        .foregroundColor(.white)
+        .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
+    }
+    .position(circle.position)
+    .scaleEffect(circle.isHit ? 1.2 : 1.0)
+    .opacity(circle.isHit ? 0.5 : 1.0)
+    .animation(.easeInOut(duration: 0.3), value: circle.isHit)
+  }
+}
+
+// MARK: - Game End Overlay
+struct GameEndOverlay: View {
+  @ObservedObject var viewModel: GameViewModel
+  let viewSize: CGSize
+
+  var body: some View {
+    ZStack {
+      // Background overlay
+      Rectangle()
+        .fill(.black.opacity(0.8))
+        .ignoresSafeArea()
+
+      VStack(spacing: 24) {
+        // Game result icon
+        Image(
+          systemName: viewModel.gameState.isGameWon ? "checkmark.circle.fill" : "xmark.circle.fill"
+        )
+        .font(.system(size: 80))
+        .foregroundColor(viewModel.gameState.isGameWon ? .green : .red)
+
+        // Game result text
+        Text(viewModel.gameState.isGameWon ? "You Won!" : "Game Over")
+          .font(.largeTitle)
+          .fontWeight(.bold)
+          .foregroundColor(.white)
+
+        // Score display
+        Text("Final Score: \(viewModel.gameState.score)")
+          .font(.title2)
+          .foregroundColor(.gray)
+
+        // Restart button
+        Button(action: {
+          viewModel.restartGame()
+        }) {
+          HStack {
+            Image(systemName: "arrow.clockwise")
+            Text("Play Again")
+          }
+          .font(.title2)
+          .fontWeight(.semibold)
+          .foregroundColor(.white)
+          .padding()
+          .background(.blue)
+          .cornerRadius(12)
+        }
+      }
+      .padding(32)
+      .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
     }
   }
 }
@@ -125,7 +207,7 @@ struct TargetImageOverlay: View {
       ForEach(handDetectionService.handDetectionData.hands.indices, id: \.self) { handIndex in
         let hand = handDetectionService.handDetectionData.hands[handIndex]
         let palmPosition = TargetImageCalculations.calculatePalmPosition(for: hand)
-        let dynamicSize = TargetImageCalculations.calculateTargetSize(for: hand, baseSize: 100)
+        let dynamicSize = TargetImageCalculations.calculateTargetSize(for: hand, baseSize: 60)
 
         Image("target")
           .resizable()
@@ -133,7 +215,7 @@ struct TargetImageOverlay: View {
           .position(palmPosition)
           .scaleEffect(1.0)
           .animation(.easeOut(duration: 0.2), value: dynamicSize)
-          .opacity(handDetectionService.handDetectionData.isDetected ? 0.8 : 0.0)
+          .opacity(handDetectionService.handDetectionData.isDetected ? 0.6 : 0.0)
       }
     }
   }
@@ -154,56 +236,5 @@ struct InteractiveShape: View {
       .shadow(color: color.opacity(0.4), radius: 15, x: 0, y: 5)
       .scaleEffect(1.0)
       .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: UUID())
-  }
-}
-
-// MARK: - Status Info Card
-struct StatusInfoCard: View {
-  @ObservedObject var handDetectionService: HandDetectionService
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack {
-        Circle()
-          .fill(handDetectionService.handDetectionData.isDetected ? .green : .red)
-          .frame(width: 8, height: 8)
-        Text("Hand Detected")
-          .font(.caption)
-          .fontWeight(.medium)
-      }
-
-      Text("Hands: \(handDetectionService.handDetectionData.hands.count)")
-        .font(.caption2)
-        .foregroundColor(.secondary)
-
-      Text(
-        "Confidence: \(String(format: "%.2f", handDetectionService.handDetectionData.confidence))"
-      )
-      .font(.caption2)
-      .foregroundColor(.secondary)
-    }
-    .padding(12)
-    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-  }
-}
-
-// MARK: - Score Card
-struct ScoreCard: View {
-  let score: Int
-
-  var body: some View {
-    VStack(spacing: 4) {
-      Text("SCORE")
-        .font(.caption2)
-        .fontWeight(.semibold)
-        .foregroundColor(.secondary)
-
-      Text("\(score)")
-        .font(.title)
-        .fontWeight(.bold)
-        .foregroundColor(.primary)
-    }
-    .padding(16)
-    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
   }
 }

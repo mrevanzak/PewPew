@@ -17,33 +17,33 @@ class GameViewModel: ObservableObject {
   @Published var handDetectionService = HandDetectionService()
   @Published var cameraManager: CameraManager
 
-  // Game state
-  @Published var isShapeVisible = false
+  // Sequence-based game state
+  @Published var gameState = GameState()
+  @Published var sequenceCircles: [SequenceCircle] = []
   @Published var viewSize: CGSize = .zero
-  @Published var score = 0
   @Published var gameStarted = false
 
-  // Random spawn properties
+  // Legacy properties for compatibility
+  @Published var isShapeVisible = false
   @Published var shapePosition: CGPoint = .zero
   @Published var currentShapeColor: Color = .blue
+  var score: Int { gameState.score }
 
   // Game configuration
-  let shapeSize: CGFloat = 100
-  let shapeColor = Color.blue.opacity(0.7)
+  let shapeSize: CGFloat = 80
+  private let minSpawnDelay: Double = 2.0
+  private let maxSpawnDelay: Double = 4.0
+  private let maxActiveCircles: Int = 3
 
   // Collision detection configuration
-  @Published var collisionDetectionType: CollisionDetectionType = .targetImage(baseSize: 100)
+  @Published var collisionDetectionType: CollisionDetectionType = .fingerPoints
   private var collisionStrategy: CollisionDetectionStrategy {
     collisionDetectionType.createStrategy()
   }
 
-  // Spawn timing configuration
-  private let minSpawnDelay: Double = 1.0
-  private let maxSpawnDelay: Double = 4.0
-  private let shapeVisibleDuration: Double = 3.0
-
   private var cancellables = Set<AnyCancellable>()
   private var spawnTimer: Timer?
+  private var cleanupTimer: Timer?
 
   init() {
     let handService = HandDetectionService()
@@ -59,7 +59,7 @@ class GameViewModel: ObservableObject {
     handDetectionService.$handDetectionData
       .receive(on: DispatchQueue.main)
       .sink { [weak self] _ in
-        self?.checkCollision()
+        self?.checkSequenceCollisions()
       }
       .store(in: &cancellables)
   }
@@ -67,16 +67,31 @@ class GameViewModel: ObservableObject {
   /// Start the game session
   func startGame() {
     gameStarted = true
-    score = 0
+    gameState.reset()
+    sequenceCircles.removeAll()
     cameraManager.startSession()
-    startRandomSpawning()
+    startSequenceSpawning()
+    startCleanupTimer()
   }
 
   /// Stop the game session
   func stopGame() {
     gameStarted = false
     cameraManager.stopSession()
-    stopRandomSpawning()
+    stopSpawning()
+    sequenceCircles.removeAll()
+  }
+
+  /// Restart the game
+  func restartGame() {
+    // Immediately reset game state to hide overlay
+    gameState.reset()
+    sequenceCircles.removeAll()
+
+    stopGame()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+      self.startGame()
+    }
   }
 
   /// Update view size when geometry changes
@@ -90,112 +105,220 @@ class GameViewModel: ObservableObject {
     collisionDetectionType = type
   }
 
-  /// Start random spawning timer
-  private func startRandomSpawning() {
-    // Schedule first spawn
-    scheduleNextSpawn()
+  // MARK: - Sequence Game Logic
+
+  /// Start spawning sequence circles
+  private func startSequenceSpawning() {
+    scheduleNextSequenceSpawn()
   }
 
-  /// Stop random spawning timer
-  private func stopRandomSpawning() {
+  /// Stop all spawning timers
+  private func stopSpawning() {
     spawnTimer?.invalidate()
     spawnTimer = nil
-    isShapeVisible = false
+    cleanupTimer?.invalidate()
+    cleanupTimer = nil
   }
 
-  /// Schedule the next random spawn
-  private func scheduleNextSpawn() {
+  /// Schedule the next sequence circle spawn
+  private func scheduleNextSequenceSpawn() {
+    guard gameStarted && !gameState.isGameOver && !gameState.isGameWon else { return }
+
     let randomDelay = Double.random(in: minSpawnDelay...maxSpawnDelay)
 
     spawnTimer?.invalidate()
     spawnTimer = Timer.scheduledTimer(withTimeInterval: randomDelay, repeats: false) {
       [weak self] _ in
-      self?.spawnShape()
+      self?.spawnSequenceCircle()
     }
   }
 
-  /// Spawn shape at random position with random color
-  private func spawnShape() {
-    guard gameStarted && viewSize != .zero else { return }
+  /// Spawn a new sequence circle
+  private func spawnSequenceCircle() {
+    guard gameStarted && viewSize != .zero && sequenceCircles.count < maxActiveCircles else {
+      scheduleNextSequenceSpawn()
+      return
+    }
 
-    // Generate random position (ensuring shape stays within bounds)
+    // Generate random position
     let safeMargin = shapeSize / 2 + 20
     let randomX = Double.random(in: safeMargin...(viewSize.width - safeMargin))
     let randomY = Double.random(in: safeMargin...(viewSize.height - safeMargin))
+    let position = CGPoint(x: randomX, y: randomY)
 
-    shapePosition = CGPoint(x: randomX, y: randomY)
+    // Generate color based on sequence number
+    let colors: [Color] = [.blue, .red, .green, .orange, .purple]
+    let colorIndex = (gameState.nextSequenceToSpawn - 1) % colors.count
+    let color = colors[colorIndex]
 
-    // Generate random color
-    let colors: [Color] = [.blue, .red, .green, .orange, .purple, .pink]
-    currentShapeColor = colors.randomElement()?.opacity(0.7) ?? .blue.opacity(0.7)
+    // Create new sequence circle
+    let circle = SequenceCircle(
+      sequenceNumber: gameState.nextSequenceToSpawn,
+      position: position,
+      size: shapeSize,
+      color: color
+    )
 
-    // Show shape with animation
-    withAnimation(.easeIn(duration: 0.3)) {
-      isShapeVisible = true
+    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+      sequenceCircles.append(circle)
     }
 
-    // Hide shape after duration
-    DispatchQueue.main.asyncAfter(deadline: .now() + shapeVisibleDuration) {
-      if self.isShapeVisible {
-        self.hideShape()
+    // Update next sequence number to spawn
+    gameState.nextSequenceToSpawn += 1
+    if gameState.nextSequenceToSpawn > gameState.maxSequenceNumbers {
+      gameState.nextSequenceToSpawn = 1
+    }
+
+    // Schedule next spawn
+    scheduleNextSequenceSpawn()
+  }
+
+  /// Start cleanup timer to remove expired circles
+  private func startCleanupTimer() {
+    cleanupTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+      self?.cleanupExpiredCircles()
+    }
+  }
+
+  /// Remove expired circles and handle damage
+  private func cleanupExpiredCircles() {
+    let currentTime = Date()
+    let expiredCircles = sequenceCircles.filter { circle in
+      currentTime.timeIntervalSince(circle.spawnTime) > gameState.circleLifetime
+    }
+
+    for expiredCircle in expiredCircles {
+      if !expiredCircle.isHit && expiredCircle.sequenceNumber == gameState.currentSequence {
+        // Player missed the correct sequence - take damage
+        gameState.takeDamage()
+        provideMissedSequenceFeedback()
+      }
+    }
+
+    withAnimation(.easeOut(duration: 0.3)) {
+      sequenceCircles.removeAll { circle in
+        currentTime.timeIntervalSince(circle.spawnTime) > gameState.circleLifetime
       }
     }
   }
 
-  /// Hide shape and schedule next spawn
-  private func hideShape() {
-    withAnimation(.easeOut(duration: 0.3)) {
-      isShapeVisible = false
-    }
-
-    // Schedule next spawn
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      self.scheduleNextSpawn()
-    }
-  }
-
-  /// Check for collision between finger points and shapes
-  private func checkCollision() {
-    guard isShapeVisible && handDetectionService.handDetectionData.isDetected && viewSize != .zero
+  /// Check for collisions with sequence circles
+  private func checkSequenceCollisions() {
+    guard gameStarted && handDetectionService.handDetectionData.isDetected && viewSize != .zero
     else { return }
 
-    // Calculate shape frame using dynamic position
-    let shapeFrame = CGRect(
-      x: shapePosition.x - shapeSize / 2,
-      y: shapePosition.y - shapeSize / 2,
-      width: shapeSize,
-      height: shapeSize
-    )
+    for (index, circle) in sequenceCircles.enumerated() {
+      guard !circle.isHit else { continue }
 
-    // Use configurable collision detection strategy
-    let collision = collisionStrategy.checkCollision(
-      hands: handDetectionService.handDetectionData.hands,
-      shapeFrame: shapeFrame,
-      viewSize: viewSize
-    )
+      let circleFrame = CGRect(
+        x: circle.position.x - circle.size / 2,
+        y: circle.position.y - circle.size / 2,
+        width: circle.size,
+        height: circle.size
+      )
 
-    if collision.hasCollision {
-      handleCollision()
+      let collision = collisionStrategy.checkCollision(
+        hands: handDetectionService.handDetectionData.hands,
+        shapeFrame: circleFrame,
+        viewSize: viewSize
+      )
+
+      if collision.hasCollision {
+        handleSequenceTouch(at: index)
+        break  // Only handle one collision per frame
+      }
     }
   }
 
-  /// Handle collision detected event
-  private func handleCollision() {
-    // Hide the shape when collision is detected
+  /// Handle touch on a sequence circle
+  private func handleSequenceTouch(at index: Int) {
+    guard index < sequenceCircles.count else { return }
+
+    let touchedCircle = sequenceCircles[index]
+
+    // Mark circle as hit
+    sequenceCircles[index].isHit = true
+
+    if touchedCircle.sequenceNumber == gameState.currentSequence {
+      // Correct sequence - award points
+      handleCorrectSequence(at: index)
+    } else {
+      // Wrong sequence - take damage
+      handleWrongSequence(at: index)
+    }
+  }
+
+  /// Handle correct sequence touch
+  private func handleCorrectSequence(at index: Int) {
     withAnimation(.easeOut(duration: 0.3)) {
-      isShapeVisible = false
+      sequenceCircles.remove(at: index)
     }
 
-    // Increment score
-    score += 1
+    gameState.scorePoint()
+    provideCorrectSequenceFeedback()
 
-    // Schedule next spawn after short delay
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      self.scheduleNextSpawn()
+    // Check for win condition
+    if gameState.isGameWon {
+      provideWinFeedback()
+      stopSpawning()
+    }
+  }
+
+  /// Handle wrong sequence touch
+  private func handleWrongSequence(at index: Int) {
+    let wrongCircle = sequenceCircles[index]
+
+    // Visual feedback for wrong tap
+    withAnimation(.easeOut(duration: 0.3)) {
+      sequenceCircles.remove(at: index)
     }
 
-    // Add haptic feedback
-    let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-    impactFeedback.impactOccurred()
+    gameState.takeDamage()
+    provideWrongSequenceFeedback()
+
+    // Check for game over
+    if gameState.isGameOver {
+      provideGameOverFeedback()
+      stopSpawning()
+    }
+  }
+
+  // MARK: - Haptic & Audio Feedback
+
+  /// Provide feedback for correct sequence
+  private func provideCorrectSequenceFeedback() {
+    let feedback = UINotificationFeedbackGenerator()
+    feedback.notificationOccurred(.success)
+  }
+
+  /// Provide feedback for wrong sequence
+  private func provideWrongSequenceFeedback() {
+    let feedback = UINotificationFeedbackGenerator()
+    feedback.notificationOccurred(.error)
+  }
+
+  /// Provide feedback for missed sequence
+  private func provideMissedSequenceFeedback() {
+    let feedback = UIImpactFeedbackGenerator(style: .heavy)
+    feedback.impactOccurred()
+  }
+
+  /// Provide feedback for game win
+  private func provideWinFeedback() {
+    let feedback = UINotificationFeedbackGenerator()
+    feedback.notificationOccurred(.success)
+  }
+
+  /// Provide feedback for game over
+  private func provideGameOverFeedback() {
+    let feedback = UINotificationFeedbackGenerator()
+    feedback.notificationOccurred(.error)
+  }
+
+  // MARK: - Legacy Support
+
+  /// Legacy method for backward compatibility
+  private func handleCollision() {
+    // This method is kept for compatibility but not used in sequence game
   }
 }
