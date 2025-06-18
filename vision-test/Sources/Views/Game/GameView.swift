@@ -20,6 +20,7 @@ struct GameView: View {
 
         // Game overlays
         GameOverlaysView(viewModel: viewModel, viewSize: geometry.size)
+        SpriteView(viewModel: viewModel)
 
         // Status overlay in safe area
         StatusOverlayView(viewModel: viewModel)

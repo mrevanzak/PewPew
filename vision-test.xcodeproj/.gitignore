@@ -1,0 +1,4 @@
+# Ignore Xcode project files and user state
+project.pbxproj
+*.xcuserstate
+xcschememanagement.plist
