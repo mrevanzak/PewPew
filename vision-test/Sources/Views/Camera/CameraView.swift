@@ -12,140 +12,80 @@ import UIKit
 /// UIViewRepresentable wrapper for camera preview with hand detection overlay
 /// Provides live camera feed display and hand tracking visualization for iOS
 struct CameraView: UIViewRepresentable {
-    let cameraManager: CameraManager
-    @ObservedObject var handDetectionService: HandDetectionService
+  let cameraManager: CameraManager
 
-    func makeUIView(context: Context) -> CameraPreviewView {
-        let view = CameraPreviewView()
-        
-        // Get preview layer from camera manager
-        let previewLayer = cameraManager.getPreviewLayer()
-        view.setPreviewLayer(previewLayer)
-        
-        return view
-    }
+  func makeUIView(context: Context) -> CameraPreviewView {
+    let view = CameraPreviewView()
 
-    func updateUIView(_ uiView: CameraPreviewView, context: Context) {
-        // Update hand detection overlay
-        uiView.updateHandPoints(handDetectionService.handDetectionData.hands)
-    }
+    // Get preview layer from camera manager
+    let previewLayer = cameraManager.getPreviewLayer()
+    view.setPreviewLayer(previewLayer)
+
+    return view
+  }
+
+  func updateUIView(_ uiView: CameraPreviewView, context: Context) {
+  }
 }
 
 /// Custom UIView that combines camera preview with hand detection overlay
 class CameraPreviewView: UIView {
-    private var previewLayer: AVCaptureVideoPreviewLayer?
-    private var overlayLayer = CAShapeLayer()
-    private var pointsPath = UIBezierPath()
+  private var previewLayer: AVCaptureVideoPreviewLayer?
+  private var overlayLayer = CAShapeLayer()
 
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        setupOverlay()
-        setupOrientationObserver()
-    }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupOverlay()
-        setupOrientationObserver()
-    }
-    
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
-    
-    func setPreviewLayer(_ layer: AVCaptureVideoPreviewLayer) {
-        previewLayer = layer
-        layer.frame = bounds
-        self.layer.addSublayer(layer)
-        
-        // Add overlay on top of preview layer
-        layer.addSublayer(overlayLayer)
-    }
-    
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        previewLayer?.frame = bounds
-        overlayLayer.frame = bounds
-    }
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    setupOverlay()
+    setupOrientationObserver()
+  }
 
-    private func setupOverlay() {
-        overlayLayer.strokeColor = UIColor.red.cgColor
-        overlayLayer.fillColor = UIColor.blue.cgColor
-        overlayLayer.lineWidth = 8
-        overlayLayer.lineJoin = .round
+  required init?(coder: NSCoder) {
+    super.init(coder: coder)
+    setupOverlay()
+    setupOrientationObserver()
+  }
+
+  deinit {
+    NotificationCenter.default.removeObserver(self)
+  }
+
+  func setPreviewLayer(_ layer: AVCaptureVideoPreviewLayer) {
+    previewLayer = layer
+    layer.frame = bounds
+    self.layer.addSublayer(layer)
+
+    // Add overlay on top of preview layer
+    layer.addSublayer(overlayLayer)
+  }
+
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    previewLayer?.frame = bounds
+    overlayLayer.frame = bounds
+  }
+
+  private func setupOverlay() {
+    overlayLayer.strokeColor = UIColor.red.cgColor
+    overlayLayer.fillColor = UIColor.blue.cgColor
+    overlayLayer.lineWidth = 8
+    overlayLayer.lineJoin = .round
+  }
+
+  private func setupOrientationObserver() {
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(orientationChanged),
+      name: UIDevice.orientationDidChangeNotification,
+      object: nil
+    )
+  }
+
+  @objc private func orientationChanged() {
+    // Force layout update when orientation changes
+    DispatchQueue.main.async {
+      self.setNeedsLayout()
+      self.layoutIfNeeded()
     }
-    
-    private func setupOrientationObserver() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(orientationChanged),
-            name: UIDevice.orientationDidChangeNotification,
-            object: nil
-        )
-    }
-    
-    @objc private func orientationChanged() {
-        // Force layout update when orientation changes
-        DispatchQueue.main.async {
-            self.setNeedsLayout()
-            self.layoutIfNeeded()
-        }
-    }
-    
-    /// Update hand points overlay with enhanced visualization
-    func updateHandPoints(_ hands: [HandPoints]) {
-        pointsPath.removeAllPoints()
-        
-        for hand in hands {
-            // Draw wrist
-            pointsPath.move(to: hand.wrist)
-            pointsPath.addArc(withCenter: hand.wrist, radius: 5, startAngle: 0, endAngle: 2 * .pi, clockwise: true)
-            
-            // Draw thumb with connections
-            pointsPath.move(to: hand.wrist)
-            hand.thumb.forEach { point in
-                pointsPath.addLine(to: point)
-                pointsPath.addArc(withCenter: point, radius: 5, startAngle: 0, endAngle: 2 * .pi, clockwise: true)
-                pointsPath.move(to: point)
-            }
-            
-            // Draw index finger with connections
-            pointsPath.move(to: hand.wrist)
-            hand.index.forEach { point in
-                pointsPath.addLine(to: point)
-                pointsPath.addArc(withCenter: point, radius: 5, startAngle: 0, endAngle: 2 * .pi, clockwise: true)
-                pointsPath.move(to: point)
-            }
-            
-            // Draw middle finger with connections
-            pointsPath.move(to: hand.wrist)
-            hand.middle.forEach { point in
-                pointsPath.addLine(to: point)
-                pointsPath.addArc(withCenter: point, radius: 5, startAngle: 0, endAngle: 2 * .pi, clockwise: true)
-                pointsPath.move(to: point)
-            }
-            
-            // Draw ring finger with connections
-            pointsPath.move(to: hand.wrist)
-            hand.ring.forEach { point in
-                pointsPath.addLine(to: point)
-                pointsPath.addArc(withCenter: point, radius: 5, startAngle: 0, endAngle: 2 * .pi, clockwise: true)
-                pointsPath.move(to: point)
-            }
-            
-            // Draw little finger with connections
-            pointsPath.move(to: hand.wrist)
-            hand.little.forEach { point in
-                pointsPath.addLine(to: point)
-                pointsPath.addArc(withCenter: point, radius: 5, startAngle: 0, endAngle: 2 * .pi, clockwise: true)
-                pointsPath.move(to: point)
-            }
-        }
-        
-        // Update overlay layer with smooth animation
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        overlayLayer.path = pointsPath.cgPath
-        CATransaction.commit()
-    }
+  }
+
 }

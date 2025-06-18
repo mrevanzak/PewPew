@@ -47,7 +47,7 @@ struct CameraBackgroundView: View {
   var body: some View {
     Group {
       if viewModel.cameraManager.permissionGranted {
-        CameraView(cameraManager: viewModel.cameraManager, handDetectionService: viewModel.handDetectionService)
+        CameraView(cameraManager: viewModel.cameraManager)
       } else {
         CameraPermissionView()
       }
@@ -87,7 +87,13 @@ struct GameOverlaysView: View {
   var body: some View {
     ZStack {
       // Real-time finger tracking points - always visible and optimized
-      FingerPointsOverlay(
+      // FingerPointsOverlay(
+      //   handDetectionService: viewModel.handDetectionService,
+      //   viewSize: viewSize
+      // )
+
+      // Target image following palm
+      TargetImageOverlay(
         handDetectionService: viewModel.handDetectionService,
         viewSize: viewSize
       )
@@ -100,10 +106,39 @@ struct GameOverlaysView: View {
           position: viewModel.shapePosition
         )
       }
+
+      Image("foreground")
+        .resizable()
+        .frame(width: viewSize.width, height: viewSize.height)
+        .position(CGPoint(x: viewSize.width / 2, y: viewSize.height / 2))
     }
   }
 }
 
+// MARK: - Target Image Overlay
+struct TargetImageOverlay: View {
+  @ObservedObject var handDetectionService: HandDetectionService
+  let viewSize: CGSize
+
+  var body: some View {
+    ZStack {
+      ForEach(handDetectionService.handDetectionData.hands.indices, id: \.self) { handIndex in
+        let hand = handDetectionService.handDetectionData.hands[handIndex]
+        let palmPosition = TargetImageCalculations.calculatePalmPosition(for: hand)
+        let dynamicSize = TargetImageCalculations.calculateTargetSize(for: hand, baseSize: 100)
+
+        Image("target")
+          .resizable()
+          .frame(width: dynamicSize, height: dynamicSize)
+          .position(palmPosition)
+          .scaleEffect(1.0)
+          .animation(.easeOut(duration: 0.2), value: dynamicSize)
+          .opacity(handDetectionService.handDetectionData.isDetected ? 0.8 : 0.0)
+      }
+    }
+  }
+
+}
 
 // MARK: - Interactive Shape
 struct InteractiveShape: View {

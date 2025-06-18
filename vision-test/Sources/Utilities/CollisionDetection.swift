@@ -22,6 +22,43 @@ struct CollisionDetection {
     }
   }
 
+  /// Check if target image collides with a shape
+  /// - Parameters:
+  ///   - targetCenter: Center position of the target image
+  ///   - targetSize: Size of the target image
+  ///   - shapeFrame: Frame of the interactive shape
+  /// - Returns: Collision result with details
+  static func checkTargetImageCollision(
+    targetCenter: CGPoint,
+    targetSize: CGFloat,
+    shapeFrame: CGRect
+  ) -> CollisionResult {
+    // Create target image frame
+    let targetFrame = CGRect(
+      x: targetCenter.x - targetSize / 2,
+      y: targetCenter.y - targetSize / 2,
+      width: targetSize,
+      height: targetSize
+    )
+
+    // Check if target image frame intersects with shape frame
+    if targetFrame.intersects(shapeFrame) {
+      // Calculate overlap percentage
+      let intersection = targetFrame.intersection(shapeFrame)
+      let intersectionArea = intersection.width * intersection.height
+      let targetArea = targetFrame.width * targetFrame.height
+      let overlapPercentage = intersectionArea / targetArea
+
+      return CollisionResult(
+        hasCollision: true,
+        overlapPercentage: overlapPercentage,
+        collisionPoint: targetCenter
+      )
+    }
+
+    return CollisionResult.noCollision
+  }
+
   /// Check if finger points collide with a shape - Enhanced version for new hand structure
   /// - Parameters:
   ///   - hands: Array of HandPoints structures
@@ -36,7 +73,7 @@ struct CollisionDetection {
     for hand in hands {
       // Check all finger points for collision
       let allPoints = getAllHandPoints(from: hand)
-      
+
       for point in allPoints {
         if shapeFrame.contains(point) {
           return CollisionResult(
@@ -49,7 +86,7 @@ struct CollisionDetection {
     }
     return CollisionResult.noCollision
   }
-  
+
   /// Legacy method for backward compatibility
   /// - Parameters:
   ///   - fingerPoints: Array of finger point arrays (per hand) - deprecated
@@ -80,23 +117,23 @@ struct CollisionDetection {
     }
     return CollisionResult.noCollision
   }
-  
+
   /// Extract all points from a hand structure for collision detection
   /// - Parameter hand: HandPoints structure
   /// - Returns: Array of all CGPoints from the hand
   private static func getAllHandPoints(from hand: HandPoints) -> [CGPoint] {
     var allPoints: [CGPoint] = []
-    
+
     // Add wrist
     allPoints.append(hand.wrist)
-    
+
     // Add all finger points
     allPoints.append(contentsOf: hand.thumb)
     allPoints.append(contentsOf: hand.index)
     allPoints.append(contentsOf: hand.middle)
     allPoints.append(contentsOf: hand.ring)
     allPoints.append(contentsOf: hand.little)
-    
+
     return allPoints
   }
 

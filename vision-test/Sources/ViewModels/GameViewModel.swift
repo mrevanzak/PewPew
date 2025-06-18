@@ -22,7 +22,7 @@ class GameViewModel: ObservableObject {
   @Published var viewSize: CGSize = .zero
   @Published var score = 0
   @Published var gameStarted = false
-  
+
   // Random spawn properties
   @Published var shapePosition: CGPoint = .zero
   @Published var currentShapeColor: Color = .blue
@@ -30,7 +30,13 @@ class GameViewModel: ObservableObject {
   // Game configuration
   let shapeSize: CGFloat = 100
   let shapeColor = Color.blue.opacity(0.7)
-  
+
+  // Collision detection configuration
+  @Published var collisionDetectionType: CollisionDetectionType = .targetImage(baseSize: 100)
+  private var collisionStrategy: CollisionDetectionStrategy {
+    collisionDetectionType.createStrategy()
+  }
+
   // Spawn timing configuration
   private let minSpawnDelay: Double = 1.0
   private let maxSpawnDelay: Double = 4.0
@@ -77,50 +83,57 @@ class GameViewModel: ObservableObject {
   func updateViewSize(_ size: CGSize) {
     viewSize = size
   }
-  
+
+  /// Switch collision detection method
+  /// - Parameter type: The collision detection type to use
+  func setCollisionDetection(to type: CollisionDetectionType) {
+    collisionDetectionType = type
+  }
+
   /// Start random spawning timer
   private func startRandomSpawning() {
     // Schedule first spawn
     scheduleNextSpawn()
   }
-  
+
   /// Stop random spawning timer
   private func stopRandomSpawning() {
     spawnTimer?.invalidate()
     spawnTimer = nil
     isShapeVisible = false
   }
-  
+
   /// Schedule the next random spawn
   private func scheduleNextSpawn() {
     let randomDelay = Double.random(in: minSpawnDelay...maxSpawnDelay)
-    
+
     spawnTimer?.invalidate()
-    spawnTimer = Timer.scheduledTimer(withTimeInterval: randomDelay, repeats: false) { [weak self] _ in
+    spawnTimer = Timer.scheduledTimer(withTimeInterval: randomDelay, repeats: false) {
+      [weak self] _ in
       self?.spawnShape()
     }
   }
-  
+
   /// Spawn shape at random position with random color
   private func spawnShape() {
     guard gameStarted && viewSize != .zero else { return }
-    
+
     // Generate random position (ensuring shape stays within bounds)
     let safeMargin = shapeSize / 2 + 20
     let randomX = Double.random(in: safeMargin...(viewSize.width - safeMargin))
     let randomY = Double.random(in: safeMargin...(viewSize.height - safeMargin))
-    
+
     shapePosition = CGPoint(x: randomX, y: randomY)
-    
+
     // Generate random color
     let colors: [Color] = [.blue, .red, .green, .orange, .purple, .pink]
     currentShapeColor = colors.randomElement()?.opacity(0.7) ?? .blue.opacity(0.7)
-    
+
     // Show shape with animation
     withAnimation(.easeIn(duration: 0.3)) {
       isShapeVisible = true
     }
-    
+
     // Hide shape after duration
     DispatchQueue.main.asyncAfter(deadline: .now() + shapeVisibleDuration) {
       if self.isShapeVisible {
@@ -128,13 +141,13 @@ class GameViewModel: ObservableObject {
       }
     }
   }
-  
+
   /// Hide shape and schedule next spawn
   private func hideShape() {
     withAnimation(.easeOut(duration: 0.3)) {
       isShapeVisible = false
     }
-    
+
     // Schedule next spawn
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
       self.scheduleNextSpawn()
@@ -154,8 +167,8 @@ class GameViewModel: ObservableObject {
       height: shapeSize
     )
 
-    // Use the improved collision detection from utilities with new hand structure
-    let collision = CollisionDetection.checkFingerCollision(
+    // Use configurable collision detection strategy
+    let collision = collisionStrategy.checkCollision(
       hands: handDetectionService.handDetectionData.hands,
       shapeFrame: shapeFrame,
       viewSize: viewSize
