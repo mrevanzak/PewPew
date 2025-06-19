@@ -59,6 +59,8 @@ class HandDetectionService: ObservableObject {
     var rightFingerPoints: [CGPoint] = []
     var leftWristPoint: CGPoint?
     var rightWristPoint: CGPoint?
+    var leftPalmPoint: CGPoint?
+    var rightPalmPoint: CGPoint?
     
     // Process each hand observation
     results.forEach { observation in
@@ -94,9 +96,38 @@ class HandDetectionService: ObservableObject {
       if observation.chirality == .left {
         leftFingerPoints = fingerPoints
         leftWristPoint = wristPoint
+        // Calculate palm as average of wrist and MCPs
+        let mcpKeys: [VNHumanHandPoseObservation.JointName] = [.thumbCMC, .indexMCP, .middleMCP, .ringMCP, .littleMCP]
+        let mcpPoints = mcpKeys.compactMap { key in
+          if let point = recognizedPoints[key], point.confidence > 0.5 {
+            return CGPoint(x: point.location.x, y: point.location.y)
+          }
+          return nil
+        }
+        if let wrist = wristPoint, !mcpPoints.isEmpty {
+          let allPalm = [wrist] + mcpPoints
+          leftPalmPoint = CGPoint(
+            x: allPalm.map { $0.x }.reduce(0, +) / CGFloat(allPalm.count),
+            y: allPalm.map { $0.y }.reduce(0, +) / CGFloat(allPalm.count)
+          )
+        }
       } else if observation.chirality == .right {
         rightFingerPoints = fingerPoints
         rightWristPoint = wristPoint
+        let mcpKeys: [VNHumanHandPoseObservation.JointName] = [.thumbCMC, .indexMCP, .middleMCP, .ringMCP, .littleMCP]
+        let mcpPoints = mcpKeys.compactMap { key in
+          if let point = recognizedPoints[key], point.confidence > 0.5 {
+            return CGPoint(x: point.location.x, y: point.location.y)
+          }
+          return nil
+        }
+        if let wrist = wristPoint, !mcpPoints.isEmpty {
+          let allPalm = [wrist] + mcpPoints
+          rightPalmPoint = CGPoint(
+            x: allPalm.map { $0.x }.reduce(0, +) / CGFloat(allPalm.count),
+            y: allPalm.map { $0.y }.reduce(0, +) / CGFloat(allPalm.count)
+          )
+        }
       }
     }
     
@@ -129,15 +160,73 @@ class HandDetectionService: ObservableObject {
     
     // Update published properties with separated left/right data
     handDetectionData = HandDetectionData(
-      boundingBoxes: [],  // Will be calculated if needed
+      boundingBoxes: [],
       fingerPointsPerHand: allFingerPoints,
       leftFingerPoints: leftFingerPoints,
       rightFingerPoints: rightFingerPoints,
       leftWristPoint: leftWristPoint,
       rightWristPoint: rightWristPoint,
+      leftPalmPoint: leftPalmPoint,
+      rightPalmPoint: rightPalmPoint,
       isDetected: !leftFingerPoints.isEmpty || !rightFingerPoints.isEmpty,
       confidence: averageConfidence
     )
+  }
+  
+  /// Returns true if any hand is currently open (shoot gesture)
+  func isAnyHandOpen() -> Bool {
+    return getHandStates().contains(.open)
+  }
+
+  /// Returns true if any hand is currently closed (fist)
+  func isAnyHandClosed() -> Bool {
+    return getHandStates().contains(.closed)
+  }
+
+  /// Returns the state (open/closed) for each detected hand
+  func getHandStates() -> [HandState] {
+    var states: [HandState] = []
+    if let leftPalm = handDetectionData.leftPalmPoint, handDetectionData.leftFingerPoints.count >= 5 {
+      let isOpen = HandDetectionService.isHandOpen(fingerPoints: handDetectionData.leftFingerPoints, palm: leftPalm)
+      states.append(isOpen ? .open : .closed)
+    }
+    if let rightPalm = handDetectionData.rightPalmPoint, handDetectionData.rightFingerPoints.count >= 5 {
+      let isOpen = HandDetectionService.isHandOpen(fingerPoints: handDetectionData.rightFingerPoints, palm: rightPalm)
+      states.append(isOpen ? .open : .closed)
+    }
+    return states
+  }
+
+  enum HandState { case open, closed }
+
+  /// Determines if a hand is open (shoot gesture) by checking if all finger tips are far from the palm
+  static func isHandOpen(fingerPoints: [CGPoint], palm: CGPoint) -> Bool {
+    guard fingerPoints.count >= 5 else { return false }
+    let distances = fingerPoints.map { tip in hypot(tip.x - palm.x, tip.y - palm.y) }
+    let avg = distances.reduce(0, +) / CGFloat(distances.count)
+    print("[HandDetectionService] avg finger-palm distance: \(avg) (threshold: 0.12)")
+    return avg > 0.10 // normalized threshold, may need tuning
+  }
+  
+  // Returns true if the specified hand is open
+  func isHandOpen(hand: String) -> Bool {
+    if hand == "left", let leftPalm = handDetectionData.leftPalmPoint, handDetectionData.leftFingerPoints.count >= 5 {
+      return HandDetectionService.isHandOpen(fingerPoints: handDetectionData.leftFingerPoints, palm: leftPalm)
+    }
+    if hand == "right", let rightPalm = handDetectionData.rightPalmPoint, handDetectionData.rightFingerPoints.count >= 5 {
+      return HandDetectionService.isHandOpen(fingerPoints: handDetectionData.rightFingerPoints, palm: rightPalm)
+    }
+    return false
+  }
+  // Returns true if the specified hand is closed
+  func isHandClosed(hand: String) -> Bool {
+    if hand == "left", let leftPalm = handDetectionData.leftPalmPoint, handDetectionData.leftFingerPoints.count >= 5 {
+      return !HandDetectionService.isHandOpen(fingerPoints: handDetectionData.leftFingerPoints, palm: leftPalm)
+    }
+    if hand == "right", let rightPalm = handDetectionData.rightPalmPoint, handDetectionData.rightFingerPoints.count >= 5 {
+      return !HandDetectionService.isHandOpen(fingerPoints: handDetectionData.rightFingerPoints, palm: rightPalm)
+    }
+    return false
   }
 }
 

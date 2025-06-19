@@ -16,6 +16,8 @@ struct HandDetectionData {
   let rightFingerPoints: [CGPoint]
   let leftWristPoint: CGPoint?
   let rightWristPoint: CGPoint?
+  let leftPalmPoint: CGPoint?
+  let rightPalmPoint: CGPoint?
   let isDetected: Bool
   let confidence: Float
   
@@ -26,6 +28,8 @@ struct HandDetectionData {
     rightFingerPoints: [],
     leftWristPoint: nil,
     rightWristPoint: nil,
+    leftPalmPoint: nil,
+    rightPalmPoint: nil,
     isDetected: false,
     confidence: 0.0
   )
