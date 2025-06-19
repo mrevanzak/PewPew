@@ -19,8 +19,8 @@ struct GameView: View {
         CameraBackgroundView(viewModel: viewModel)
 
         // Game overlays
-        GameOverlaysView(viewModel: viewModel, viewSize: geometry.size)
         SpriteView(viewModel: viewModel)
+//        GameOverlaysView(viewModel: viewModel, viewSize: geometry.size)
 
         // Status overlay in safe area
         StatusOverlayView(viewModel: viewModel)

@@ -17,6 +17,7 @@ struct HandPoints {
   let middle: [CGPoint]
   let ring: [CGPoint]
   let little: [CGPoint]
+  let chirality: String
 }
 
 /// Model representing detected hand data with enhanced accuracy

@@ -110,6 +110,17 @@ class HandDetectionService: ObservableObject {
         let ringPoints = try observation.recognizedPoints(.ringFinger).toSortedRingArray()
         let littlePoints = try observation.recognizedPoints(.littleFinger).toSortedLittleArray()
         
+        let chirality: String
+        switch observation.chirality {
+        case .left:
+          chirality = "left"
+        case .right:
+          chirality = "right"
+        default:
+          chirality = "unknown"
+        
+        }
+        
         // Convert to UIKit coordinates
         let thumbPointsFixed = thumbPoints.map { $0.location.toUIKitCoordinates(previewLayer: previewLayer) }
         let indexPointsFixed = indexPoints.map { $0.location.toUIKitCoordinates(previewLayer: previewLayer) }
@@ -124,7 +135,8 @@ class HandDetectionService: ObservableObject {
           index: indexPointsFixed,
           middle: middlePointsFixed,
           ring: ringPointsFixed,
-          little: littlePointsFixed
+          little: littlePointsFixed,
+          chirality: chirality
         )
         return hand
       } catch {
