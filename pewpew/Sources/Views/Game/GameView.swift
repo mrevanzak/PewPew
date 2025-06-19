@@ -20,7 +20,7 @@ struct GameView: View {
 
         // Game overlays
         SpriteView(viewModel: viewModel)
-        //        GameOverlaysView(viewModel: viewModel, viewSize: geometry.size)
+        // GameOverlaysView(viewModel: viewModel, viewSize: geometry.size)
 
         // Status overlay in safe area
         StatusOverlayView(viewModel: viewModel)
@@ -99,11 +99,6 @@ struct GameOverlaysView: View {
         viewSize: viewSize
       )
 
-      // Sequence circles
-      ForEach(viewModel.sequenceCircles) { circle in
-        SequenceCircleView(circle: circle)
-      }
-
       // Game over/win overlay
       if viewModel.gameState.isGameOver || viewModel.gameState.isGameWon {
         GameEndOverlay(viewModel: viewModel, viewSize: viewSize)
@@ -114,34 +109,6 @@ struct GameOverlaysView: View {
       //   .frame(width: viewSize.width, height: viewSize.height)
       //   .position(CGPoint(x: viewSize.width / 2, y: viewSize.height / 2))
     }
-  }
-}
-
-// MARK: - Sequence Circle View
-struct SequenceCircleView: View {
-  let circle: SequenceCircle
-
-  var body: some View {
-    ZStack {
-      Circle()
-        .fill(circle.color.opacity(0.8))
-        .frame(width: circle.size, height: circle.size)
-        .overlay(
-          Circle()
-            .stroke(Color.white, lineWidth: 3)
-        )
-        .shadow(color: circle.color.opacity(0.6), radius: 10, x: 0, y: 5)
-
-      Text("\(circle.sequenceNumber)")
-        .font(.title)
-        .fontWeight(.bold)
-        .foregroundColor(.white)
-        .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
-    }
-    .position(circle.position)
-    .scaleEffect(circle.isHit ? 1.2 : 1.0)
-    .opacity(circle.isHit ? 0.5 : 1.0)
-    .animation(.easeInOut(duration: 0.3), value: circle.isHit)
   }
 }
 
