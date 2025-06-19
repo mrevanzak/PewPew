@@ -10,8 +10,8 @@ import SwiftUI
 
 // MARK: - Custom SpriteKit Scene
 class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
-  private var circle1: SKSpriteNode?
-  private var circle2: SKSpriteNode?
+  // Dynamic hand-controlled circles
+  private var handCircles: [SKSpriteNode] = []
 
   var currentSequenceNumber = 1
   var totalCirclesInSequence = 0
@@ -26,20 +26,15 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
 
   override func didMove(to view: SKView) {
-    // Set clear background
     backgroundColor = .clear
-
-    // Add some sample content to demonstrate the scene is working
     setupScene()
     setupUI()
     startSpawning()
   }
 
   private func setupScene() {
-    // Create two circles that will be controlled by hand detection
     physicsWorld.contactDelegate = self
     physicsWorld.gravity = CGVector(dx: 0, dy: 0)
-    createHandControlledCircles()
   }
 
   func setupUI() {
@@ -60,77 +55,100 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     addChild(sequenceLabel)
   }
 
-  private func createHandControlledCircles() {
-    // Circle 1 - Blue (for first wrist point)
-    circle1 = SKSpriteNode(imageNamed: "target")
-    circle1?.name = "circle1"
-    circle1?.position = CGPoint(x: frame.width * 0.3, y: frame.height * 0.3)
-    circle1?.physicsBody = SKPhysicsBody(circleOfRadius: 25)
-    circle1?.physicsBody?.categoryBitMask = PhysicsCategory.player
-    circle1?.physicsBody?.contactTestBitMask = PhysicsCategory.target
-    circle1?.physicsBody?.collisionBitMask = 0
-    circle1?.physicsBody?.isDynamic = true
-    if let circle1 = circle1 {
-      addChild(circle1)
+  // MARK: - Hand Circle Management
+  private func createHandCircle(for chirality: String) -> SKSpriteNode {
+    let circle = SKSpriteNode(imageNamed: "target")
+    circle.name = "handCircle_\(chirality)"
+    circle.physicsBody = SKPhysicsBody(circleOfRadius: 25)
+    circle.physicsBody?.categoryBitMask = PhysicsCategory.player
+    circle.physicsBody?.contactTestBitMask = PhysicsCategory.target
+    circle.physicsBody?.collisionBitMask = 0
+    circle.physicsBody?.isDynamic = true
+    return circle
+  }
+
+  private func updateHandCircles(for handData: HandDetectionData) {
+    if !handData.isDetected || handData.hands.isEmpty {
+      // Remove all circles when no hands detected
+      handCircles.forEach { $0.removeFromParent() }
+      handCircles.removeAll()
+      return
     }
 
-    // Circle 2 - Red (for second wrist point)
-    circle2 = SKSpriteNode(imageNamed: "target")
-    circle2?.name = "circle2"
-    circle2?.position = CGPoint(x: frame.width * 0.7, y: frame.height * 0.7)
-    circle2?.physicsBody = SKPhysicsBody(circleOfRadius: 25)
-    circle2?.physicsBody?.categoryBitMask = PhysicsCategory.player
-    circle2?.physicsBody?.contactTestBitMask = PhysicsCategory.target
-    circle2?.physicsBody?.collisionBitMask = 0
-    circle1?.physicsBody?.isDynamic = true
-    if let circle2 = circle2 {
-      addChild(circle2)
+    // Create a dictionary of detected hands by chirality
+    var detectedHands: [String: HandPoints] = [:]
+    for hand in handData.hands {
+      detectedHands[hand.chirality] = hand
     }
+
+    // Remove circles for hands that are no longer detected
+    handCircles.removeAll { circle in
+      guard let name = circle.name,
+        let chirality = name.components(separatedBy: "_").last
+      else {
+        circle.removeFromParent()
+        return true
+      }
+
+      if detectedHands[chirality] == nil {
+        circle.removeFromParent()
+        return true
+      }
+      return false
+    }
+
+    // Update existing circles and create new ones for newly detected hands
+    for (chirality, hand) in detectedHands {
+      // Find existing circle for this chirality
+      let existingCircle = handCircles.first { circle in
+        circle.name == "handCircle_\(chirality)"
+      }
+
+      let circle: SKSpriteNode
+      if let existing = existingCircle {
+        circle = existing
+        // Update existing circle with animation
+        updateCircleForHand(circle: circle, hand: hand, animated: true)
+      } else {
+        // Create new circle for this hand
+        circle = createHandCircle(for: chirality)
+        handCircles.append(circle)
+        addChild(circle)
+        // Set initial position immediately without animation
+        updateCircleForHand(circle: circle, hand: hand, animated: false)
+      }
+    }
+  }
+
+  private func updateCircleForHand(circle: SKSpriteNode, hand: HandPoints, animated: Bool = true) {
+    let palmPosition = TargetImageCalculations.calculatePalmPosition(for: hand)
+    let viewHeight: CGFloat = size.height
+    let mirroredPalmPosition = CGPoint(x: palmPosition.x, y: viewHeight - palmPosition.y)
+    let dynamicSize = TargetImageCalculations.calculateTargetSize(for: hand, baseSize: 60)
+
+    if animated {
+      // Smooth movement and resize animations for existing circles
+      let moveAction = SKAction.move(to: mirroredPalmPosition, duration: 0.1)
+      let resizeAction = SKAction.resize(toWidth: dynamicSize, height: dynamicSize, duration: 0.1)
+
+      moveAction.timingMode = .linear
+      resizeAction.timingMode = .linear
+
+      let groupAction = SKAction.group([moveAction, resizeAction])
+      circle.run(groupAction)
+    } else {
+      // Set position and size immediately for new circles
+      circle.position = mirroredPalmPosition
+      circle.size = CGSize(width: dynamicSize, height: dynamicSize)
+    }
+
+    // Ensure circle is visible
+    circle.alpha = 1.0
   }
 
   // Function to update circle positions based on hand detection data
   func updateCirclesWithHandData(_ handData: HandDetectionData) {
-
-    // Make circles fully visible when hands are detected
-    circle1?.alpha = 1.0
-    circle2?.alpha = 1.0
-
-    if handData.isDetected {
-      for hand in handData.hands {
-        let palmPosition = TargetImageCalculations.calculatePalmPosition(for: hand)
-        let viewHeight: CGFloat = size.height
-        let mirroredPalmPosition = CGPoint(x: palmPosition.x, y: viewHeight - palmPosition.y)
-        let dynamicSize = TargetImageCalculations.calculateTargetSize(for: hand, baseSize: 60)
-
-        if hand.chirality == "left" {
-          if let circle1 = circle1 {
-            let moveAction = SKAction.move(to: mirroredPalmPosition, duration: 0.1)
-
-            let resizeAction = SKAction.resize(
-              toWidth: dynamicSize, height: dynamicSize, duration: 0.1)
-
-            resizeAction.timingMode = .linear
-            moveAction.timingMode = .linear
-            let groupAction = SKAction.group([moveAction, resizeAction])
-            circle1.run(groupAction)
-          }
-        }
-
-        if hand.chirality == "right" {
-          if let circle2 = circle2 {
-            let moveAction = SKAction.move(to: mirroredPalmPosition, duration: 0.1)
-
-            let resizeAction = SKAction.resize(
-              toWidth: dynamicSize, height: dynamicSize, duration: 0.1)
-
-            resizeAction.timingMode = .linear
-            moveAction.timingMode = .linear
-            let groupAction = SKAction.group([moveAction, resizeAction])
-            circle2.run(groupAction)
-          }
-        }
-      }
-    }
+    updateHandCircles(for: handData)
   }
 
   // Convert normalized coordinates (0-1) to scene coordinates
