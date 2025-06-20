@@ -17,6 +17,11 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   var scoreLabel: SKLabelNode!
   var isSpawning = false
 
+  // Bullet system
+  var bullets = 50
+  var bulletLabel: SKLabelNode!
+  let maxBullets = 100
+
   // Track contact state for shoot gesture
   private var pendingShootTarget: SKNode?
   private var pendingHand: String? // "left" or "right"
@@ -53,6 +58,13 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     scoreLabel.fontColor = .white
     scoreLabel.position = CGPoint(x: 100, y: size.height - 50)
     addChild(scoreLabel)
+    
+    bulletLabel = SKLabelNode(fontNamed: "Arial-Bold")
+    bulletLabel.text = "Bullets: \(bullets)"
+    bulletLabel.fontSize = 24
+    bulletLabel.fontColor = .yellow
+    bulletLabel.position = CGPoint(x: 100, y: size.height - 90)
+    addChild(bulletLabel)
   }
 
   private func createHandControlledCircles() {
@@ -161,26 +173,6 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     return CGPoint(x: clampedX, y: clampedY)
   }
   
-  override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-    guard let touch = touches.first else { return }
-    let location = touch.location(in: self)
-    
-    // Create a tap effect
-    let tapEffect = SKShapeNode(circleOfRadius: 20)
-    tapEffect.fillColor = .clear
-    tapEffect.strokeColor = .systemYellow
-    tapEffect.lineWidth = 3
-    tapEffect.position = location
-    
-    let scaleUp = SKAction.scale(to: 2.0, duration: 0.3)
-    let fadeOut = SKAction.fadeOut(withDuration: 0.3)
-    let remove = SKAction.removeFromParent()
-    let sequence = SKAction.sequence([SKAction.group([scaleUp, fadeOut]), remove])
-    
-    tapEffect.run(sequence)
-    addChild(tapEffect)
-  }
-  
   //MARK: - Spawning Logic
   func startSpawning() {
     guard !isSpawning else { return }
@@ -196,9 +188,20 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
 
   func spawnMovingCircle() {
     let radius = CGFloat.random(in: 25...35)
-    let circle = SKShapeNode(circleOfRadius: radius)
-    let colors: [UIColor] = [.red, .green, .yellow, .orange, .purple, .cyan, .magenta, .brown]
-    circle.fillColor = colors.randomElement() ?? .red
+    let isBulletTarget = Bool.random() && score > 0 // 50% chance, but not at start
+    let circle: SKShapeNode
+    if isBulletTarget {
+      // Square for bullet target
+      circle = SKShapeNode(rectOf: CGSize(width: radius * 2, height: radius * 2), cornerRadius: 6)
+      circle.fillColor = .cyan
+      circle.name = "bullet_target"
+    } else {
+      // Circle for normal target
+      circle = SKShapeNode(circleOfRadius: radius)
+      let colors: [UIColor] = [.red, .green, .yellow, .orange, .purple, .magenta, .brown]
+      circle.fillColor = colors.randomElement() ?? .red
+      circle.name = "moving_circle"
+    }
     circle.strokeColor = .white
     circle.lineWidth = 2
     // Random start and end positions on opposite edges
@@ -223,10 +226,14 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
       break
     }
     circle.position = startPosition
-    circle.name = "moving_circle"
-    circle.physicsBody = SKPhysicsBody(circleOfRadius: radius)
+    // Set physics body shape
+    if isBulletTarget {
+      circle.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: radius * 2, height: radius * 2))
+    } else {
+      circle.physicsBody = SKPhysicsBody(circleOfRadius: radius)
+    }
     circle.physicsBody?.categoryBitMask = PhysicsCategory.target
-    circle.physicsBody?.contactTestBitMask = PhysicsCategory.player
+    circle.physicsBody?.contactTestBitMask = PhysicsCategory.player | (0x1 << 2) // player or projectile
     circle.physicsBody?.collisionBitMask = 0
     circle.physicsBody?.isDynamic = true
     circle.physicsBody?.affectedByGravity = false
@@ -243,12 +250,16 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   // MARK: - Physics Contact
   func didBegin(_ contact: SKPhysicsContact) {
     let names = [contact.bodyA.node?.name, contact.bodyB.node?.name]
-    if names.contains("projectile") && names.contains("moving_circle") {
+    if names.contains("projectile") && (names.contains("moving_circle") || names.contains("bullet_target")) {
       // Find nodes
       let projectile = contact.bodyA.node?.name == "projectile" ? contact.bodyA.node : contact.bodyB.node
-      let circle = contact.bodyA.node?.name == "moving_circle" ? contact.bodyA.node : contact.bodyB.node
+      let circle = contact.bodyA.node?.name == "moving_circle" || contact.bodyA.node?.name == "bullet_target" ? contact.bodyA.node : contact.bodyB.node
       if let circle = circle, let projectile = projectile {
-        handleCorrectHit(target: circle)
+        if circle.name == "bullet_target" {
+          handleBulletHit(target: circle)
+        } else {
+          handleCorrectHit(target: circle)
+        }
         projectile.removeFromParent()
       }
       return
@@ -310,30 +321,22 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     animateScoreLabel()
   }
 
-  func createEffect(at position: CGPoint, text: String, color: UIColor) {
-    let effectLabel = SKLabelNode(fontNamed: "Arial-Bold")
-    effectLabel.text = text
-    effectLabel.fontSize = 16
-    effectLabel.fontColor = color
-    effectLabel.position = position
-    effectLabel.numberOfLines = 0
-    addChild(effectLabel)
-    
-    // Animate the effect
-    let scaleUp = SKAction.scale(to: 1.5, duration: 0.2)
-    let fadeOut = SKAction.fadeOut(withDuration: 0.8)
-    let moveUp = SKAction.moveBy(x: 0, y: 50, duration: 1.0)
-    let remove = SKAction.removeFromParent()
-    
-    let effectSequence = SKAction.sequence([
-      scaleUp,
-      SKAction.group([fadeOut, moveUp]),
-      remove
-    ])
-    
-    effectLabel.run(effectSequence)
+  func handleBulletHit(target: SKNode) {
+    let gain = 10
+    bullets = min(bullets + gain, maxBullets)
+    bulletLabel.text = "Bullets: \(bullets)"
+    createEffect(at: target.position, text: "+\(gain) Bullets", color: .cyan)
+    target.removeFromParent()
+    animateBulletLabel()
   }
-  
+
+  func animateBulletLabel() {
+    let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)
+    let scaleDown = SKAction.scale(to: 1.0, duration: 0.1)
+    let scaleSequence = SKAction.sequence([scaleUp, scaleDown])
+    bulletLabel.run(scaleSequence)
+  }
+
   func animateScoreLabel() {
     let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)  
     let scaleDown = SKAction.scale(to: 1.0, duration: 0.1)
@@ -342,6 +345,9 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
   
   func spawnProjectile(at targetPosition: CGPoint) {
+    guard bullets > 0 else { return } // No bullets left
+    bullets -= 1
+    bulletLabel.text = "Bullets: \(bullets)"
     // Start at bottom center
     let start = CGPoint(x: size.width / 2, y: 0)
     let projectile = SKShapeNode(circleOfRadius: 12)
@@ -367,8 +373,39 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     let removeAction = SKAction.removeFromParent()
     projectile.run(SKAction.sequence([moveAction, removeAction]))
   }
+  
+  func createEffect(at position: CGPoint, text: String, color: UIColor) {
+    let effectLabel = SKLabelNode(fontNamed: "Arial-Bold")
+    effectLabel.text = text
+    effectLabel.fontSize = 16
+    effectLabel.fontColor = color
+    effectLabel.position = position
+    effectLabel.numberOfLines = 0
+    addChild(effectLabel)
+    
+    // Animate the effect
+    let scaleUp = SKAction.scale(to: 1.5, duration: 0.2)
+    let fadeOut = SKAction.fadeOut(withDuration: 0.8)
+    let moveUp = SKAction.moveBy(x: 0, y: 50, duration: 1.0)
+    let remove = SKAction.removeFromParent()
+    
+    let effectSequence = SKAction.sequence([
+      scaleUp,
+      SKAction.group([fadeOut, moveUp]),
+      remove
+    ])
+    
+    effectLabel.run(effectSequence)
+  }
+  
+  override func didChangeSize(_ oldSize: CGSize) {
+    super.didChangeSize(oldSize)
+    // Place labels at the top left with padding
+    let padding: CGFloat = 24
+    scoreLabel?.position = CGPoint(x: padding + scoreLabel.frame.width/2, y: size.height - padding)
+    bulletLabel?.position = CGPoint(x: padding + bulletLabel.frame.width/2, y: size.height - padding - scoreLabel.frame.height - 8)
+  }
 }
-
 
 // MARK: - SwiftUI Wrapper
 struct SpriteKitView: UIViewRepresentable {

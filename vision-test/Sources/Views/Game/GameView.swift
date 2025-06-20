@@ -24,7 +24,7 @@ struct GameView: View {
         //                GameOverlaysView(viewModel: viewModel, viewSize: geometry.size)
         
         // Status overlay in safe area
-        StatusOverlayView(viewModel: viewModel)
+//        StatusOverlayView(viewModel: viewModel)
       }
       .onAppear {
         viewModel.updateViewSize(geometry.size)
