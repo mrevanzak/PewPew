@@ -24,6 +24,10 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   private var lastHandWasClosed = false
   var handDetectionService: HandDetectionService?
 
+  // Track last hand state for shoot gesture detection
+  private var lastLeftHandClosed = false
+  private var lastRightHandClosed = false
+
   struct PhysicsCategory {
     static let player: UInt32 = 0x1 << 0
     static let target: UInt32 = 0x1 << 1
@@ -89,10 +93,20 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   func updateCirclesWithHandData(_ handData: HandDetectionData) {
     if let service = handDetectionService {
       print("Hand states: \(service.getHandStates()) | Any open: \(service.isAnyHandOpen()) | Any closed: \(service.isAnyHandClosed())")
-      // Update lastHandWasClosed while waiting for shoot gesture
-      if waitingForShootGesture {
-        lastHandWasClosed = service.isAnyHandClosed()
+      // Detect shoot gesture for left hand
+      let leftOpen = service.isHandOpen(hand: "left")
+      let leftClosed = service.isHandClosed(hand: "left")
+      if lastLeftHandClosed && leftOpen, let leftPalm = handData.leftPalmPoint {
+        spawnProjectile(at: convertToSceneCoordinates(leftPalm))
       }
+      lastLeftHandClosed = leftClosed
+      // Detect shoot gesture for right hand
+      let rightOpen = service.isHandOpen(hand: "right")
+      let rightClosed = service.isHandClosed(hand: "right")
+      if lastRightHandClosed && rightOpen, let rightPalm = handData.rightPalmPoint {
+        spawnProjectile(at: convertToSceneCoordinates(rightPalm))
+      }
+      lastRightHandClosed = rightClosed
     }
     
     guard handData.isDetected else {
@@ -187,25 +201,24 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     circle.fillColor = colors.randomElement() ?? .red
     circle.strokeColor = .white
     circle.lineWidth = 2
-    // Random start position on one edge
+    // Random start and end positions on opposite edges
     let edges = ["left", "right", "top", "bottom"]
-    let edge = edges.randomElement() ?? "left"
+    let startEdge = edges.randomElement() ?? "left"
     var startPosition = CGPoint.zero
-    var moveVector = CGVector(dx: 0, dy: 0)
-    let speed = CGFloat.random(in: 100...250)
-    switch edge {
+    var endPosition = CGPoint.zero
+    switch startEdge {
     case "left":
       startPosition = CGPoint(x: -radius, y: CGFloat.random(in: radius...(size.height-radius)))
-      moveVector = CGVector(dx: speed, dy: CGFloat.random(in: -speed/2...speed/2))
+      endPosition = CGPoint(x: size.width+radius, y: CGFloat.random(in: radius...(size.height-radius)))
     case "right":
       startPosition = CGPoint(x: size.width+radius, y: CGFloat.random(in: radius...(size.height-radius)))
-      moveVector = CGVector(dx: -speed, dy: CGFloat.random(in: -speed/2...speed/2))
+      endPosition = CGPoint(x: -radius, y: CGFloat.random(in: radius...(size.height-radius)))
     case "top":
       startPosition = CGPoint(x: CGFloat.random(in: radius...(size.width-radius)), y: size.height+radius)
-      moveVector = CGVector(dx: CGFloat.random(in: -speed/2...speed/2), dy: -speed)
+      endPosition = CGPoint(x: CGFloat.random(in: radius...(size.width-radius)), y: -radius)
     case "bottom":
       startPosition = CGPoint(x: CGFloat.random(in: radius...(size.width-radius)), y: -radius)
-      moveVector = CGVector(dx: CGFloat.random(in: -speed/2...speed/2), dy: speed)
+      endPosition = CGPoint(x: CGFloat.random(in: radius...(size.width-radius)), y: size.height+radius)
     default:
       break
     }
@@ -218,13 +231,28 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     circle.physicsBody?.isDynamic = true
     circle.physicsBody?.affectedByGravity = false
     addChild(circle)
-    let moveAction = SKAction.move(by: CGVector(dx: moveVector.dx * 3, dy: moveVector.dy * 3), duration: 3.0)
+    // Move to the end position
+    let distance = hypot(endPosition.x - startPosition.x, endPosition.y - startPosition.y)
+    let speed: CGFloat = CGFloat.random(in: 100...250) // points per second
+    let duration = distance / speed
+    let moveAction = SKAction.move(to: endPosition, duration: duration)
     let removeAction = SKAction.removeFromParent()
     circle.run(SKAction.sequence([moveAction, removeAction]))
   }
 
   // MARK: - Physics Contact
   func didBegin(_ contact: SKPhysicsContact) {
+    let names = [contact.bodyA.node?.name, contact.bodyB.node?.name]
+    if names.contains("projectile") && names.contains("moving_circle") {
+      // Find nodes
+      let projectile = contact.bodyA.node?.name == "projectile" ? contact.bodyA.node : contact.bodyB.node
+      let circle = contact.bodyA.node?.name == "moving_circle" ? contact.bodyA.node : contact.bodyB.node
+      if let circle = circle, let projectile = projectile {
+        handleCorrectHit(target: circle)
+        projectile.removeFromParent()
+      }
+      return
+    }
     var targetNode: SKNode?
     if contact.bodyA.categoryBitMask == PhysicsCategory.target {
       targetNode = contact.bodyA.node
@@ -307,10 +335,37 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
   
   func animateScoreLabel() {
-    let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)
+    let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)  
     let scaleDown = SKAction.scale(to: 1.0, duration: 0.1)
     let scaleSequence = SKAction.sequence([scaleUp, scaleDown])
     scoreLabel.run(scaleSequence)
+  }
+  
+  func spawnProjectile(at targetPosition: CGPoint) {
+    // Start at bottom center
+    let start = CGPoint(x: size.width / 2, y: 0)
+    let projectile = SKShapeNode(circleOfRadius: 12)
+    projectile.fillColor = .white
+    projectile.strokeColor = .yellow
+    projectile.lineWidth = 2
+    projectile.position = start
+    projectile.name = "projectile"
+    projectile.physicsBody = SKPhysicsBody(circleOfRadius: 12)
+    projectile.physicsBody?.categoryBitMask = 0x1 << 2 // Projectile category
+    projectile.physicsBody?.contactTestBitMask = PhysicsCategory.target
+    projectile.physicsBody?.collisionBitMask = 0
+    projectile.physicsBody?.isDynamic = true
+    projectile.physicsBody?.affectedByGravity = false
+    addChild(projectile)
+    // Calculate direction vector
+    let dx = targetPosition.x - start.x
+    let dy = targetPosition.y - start.y
+    let distance = sqrt(dx*dx + dy*dy)
+    let speed: CGFloat = 900.0 // points per second
+    let duration = distance / speed
+    let moveAction = SKAction.move(to: targetPosition, duration: duration)
+    let removeAction = SKAction.removeFromParent()
+    projectile.run(SKAction.sequence([moveAction, removeAction]))
   }
 }
 
