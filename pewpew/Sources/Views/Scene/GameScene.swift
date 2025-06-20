@@ -13,16 +13,17 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   // Dynamic hand-controlled circles
   private var handCircles: [SKSpriteNode] = []
 
-  var currentSequenceNumber = 1
-  var totalCirclesInSequence = 0
-  var sequenceLabel: SKLabelNode!
+  // Bullet shooting system
+  private var bullets: [SKSpriteNode] = []
+  private var activeTargets: [SKSpriteNode] = []
+
   var score = 0
   var scoreLabel: SKLabelNode!
-  var isSequenceActive = false
 
   struct PhysicsCategory {
     static let player: UInt32 = 0x1 << 0
     static let target: UInt32 = 0x1 << 1
+    static let bullet: UInt32 = 0x1 << 2
   }
 
   override func didMove(to view: SKView) {
@@ -45,79 +46,102 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     scoreLabel.fontColor = .white
     scoreLabel.position = CGPoint(x: 100, y: size.height - 50)
     addChild(scoreLabel)
-
-    // Sequence progress label
-    sequenceLabel = SKLabelNode(fontNamed: "Arial-Bold")
-    sequenceLabel.text = "Next: 1"
-    sequenceLabel.fontSize = 20
-    sequenceLabel.fontColor = .yellow
-    sequenceLabel.position = CGPoint(x: size.width - 100, y: size.height - 50)
-    addChild(sequenceLabel)
   }
 
   // MARK: - Hand Circle Management
   private func createHandCircle(for chirality: String) -> SKSpriteNode {
     let circle = SKSpriteNode(imageNamed: "target")
     circle.name = "handCircle_\(chirality)"
-    circle.physicsBody = SKPhysicsBody(circleOfRadius: 25)
-    circle.physicsBody?.categoryBitMask = PhysicsCategory.player
-    circle.physicsBody?.contactTestBitMask = PhysicsCategory.target
-    circle.physicsBody?.collisionBitMask = 0
-    circle.physicsBody?.isDynamic = true
+    // Remove physics body - hand circles are now purely visual pointers
+    circle.alpha = 0.7  // Make slightly transparent to indicate they're just pointers
     return circle
   }
 
   private func updateHandCircles(for handData: HandDetectionData) {
     if !handData.isDetected || handData.hands.isEmpty {
-      // Remove all circles when no hands detected
+      // Immediately remove all hand circles when no hands detected
       handCircles.forEach { $0.removeFromParent() }
       handCircles.removeAll()
       return
     }
 
-    // Create a dictionary of detected hands by chirality
-    var detectedHands: [String: HandPoints] = [:]
-    for hand in handData.hands {
-      detectedHands[hand.chirality] = hand
-    }
+    // Use position-based tracking instead of relying only on chirality
+    let currentHands = handData.hands
 
-    // Remove circles for hands that are no longer detected
-    handCircles.removeAll { circle in
-      guard let name = circle.name,
-        let chirality = name.components(separatedBy: "_").last
-      else {
-        circle.removeFromParent()
-        return true
-      }
+    // Special handling for single hand to prevent duplicates
+    if currentHands.count == 1 {
+      let hand = currentHands[0]
 
-      if detectedHands[chirality] == nil {
-        circle.removeFromParent()
-        return true
-      }
-      return false
-    }
+      // If we have any existing circle, update it; otherwise create one
+      if let existingCircle = handCircles.first {
+        // Update the single existing circle
+        existingCircle.name = "handCircle_\(hand.chirality)"
+        updateCircleForHand(circle: existingCircle, hand: hand, animated: true)
+        existingCircle.alpha = 1.0
 
-    // Update existing circles and create new ones for newly detected hands
-    for (chirality, hand) in detectedHands {
-      // Find existing circle for this chirality
-      let existingCircle = handCircles.first { circle in
-        circle.name == "handCircle_\(chirality)"
-      }
-
-      let circle: SKSpriteNode
-      if let existing = existingCircle {
-        circle = existing
-        // Update existing circle with animation
-        updateCircleForHand(circle: circle, hand: hand, animated: true)
+        // Remove any extra circles that might exist
+        let extraCircles = Array(handCircles.dropFirst())
+        extraCircles.forEach { $0.removeFromParent() }
+        handCircles = [existingCircle]
       } else {
-        // Create new circle for this hand
-        circle = createHandCircle(for: chirality)
-        handCircles.append(circle)
-        addChild(circle)
-        // Set initial position immediately without animation
-        updateCircleForHand(circle: circle, hand: hand, animated: false)
+        // Create the first and only circle
+        let newCircle = createHandCircle(for: hand.chirality)
+        handCircles = [newCircle]
+        addChild(newCircle)
+        updateCircleForHand(circle: newCircle, hand: hand, animated: false)
       }
     }
+    // Handle multiple hands with position-based tracking
+    else {
+      var usedCircles: [SKSpriteNode] = []
+
+      // For each detected hand, find the closest existing circle or create new one
+      for hand in currentHands {
+        let palmPosition = TargetImageCalculations.calculatePalmPosition(for: hand)
+        let viewHeight: CGFloat = size.height
+        let mirroredPalmPosition = CGPoint(x: palmPosition.x, y: viewHeight - palmPosition.y)
+
+        // Find closest existing circle within reasonable distance that hasn't been used
+        var closestCircle: SKSpriteNode?
+        var closestDistance: CGFloat = CGFloat.greatestFiniteMagnitude
+        let maxTrackingDistance: CGFloat = 120  // Increased distance
+
+        for circle in handCircles {
+          if !usedCircles.contains(circle) {
+            let distance = sqrt(
+              pow(circle.position.x - mirroredPalmPosition.x, 2)
+                + pow(circle.position.y - mirroredPalmPosition.y, 2))
+            if distance < closestDistance && distance < maxTrackingDistance {
+              closestDistance = distance
+              closestCircle = circle
+            }
+          }
+        }
+
+        let circle: SKSpriteNode
+        if let existing = closestCircle {
+          // Update existing circle
+          circle = existing
+          circle.name = "handCircle_\(hand.chirality)"  // Update chirality
+          updateCircleForHand(circle: circle, hand: hand, animated: true)
+          circle.alpha = 1.0  // Ensure visibility
+          usedCircles.append(circle)
+        } else {
+          // Create new circle for new hand
+          circle = createHandCircle(for: hand.chirality)
+          handCircles.append(circle)
+          addChild(circle)
+          updateCircleForHand(circle: circle, hand: hand, animated: false)
+          usedCircles.append(circle)
+        }
+      }
+
+      // Remove any unused circles
+      let unusedCircles = handCircles.filter { !usedCircles.contains($0) }
+      unusedCircles.forEach { $0.removeFromParent() }
+      handCircles = usedCircles
+    }
+
   }
 
   private func updateCircleForHand(circle: SKSpriteNode, hand: HandPoints, animated: Bool = true) {
@@ -151,6 +175,113 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     updateHandCircles(for: handData)
   }
 
+  // MARK: - Bullet Shooting System
+
+  /// Fire a bullet from bottom center towards the nearest target or hand position
+  func fireBullet(targetPosition: CGPoint? = nil) {
+    let startPosition = CGPoint(x: size.width / 2, y: 50)  // Bottom center
+
+    // Determine target position
+    let finalTargetPosition: CGPoint
+    if let target = targetPosition {
+      finalTargetPosition = target
+    } else if let nearestTarget = findNearestTarget(to: startPosition) {
+      finalTargetPosition = nearestTarget.position
+    } else {
+      // Fire towards center-top if no target
+      finalTargetPosition = CGPoint(x: size.width / 2, y: size.height - 100)
+    }
+
+    // Create bullet sprite
+    let bullet = SKSpriteNode(color: .yellow, size: CGSize(width: 8, height: 20))
+    bullet.position = startPosition
+    bullet.name = "bullet"
+
+    // Add physics body for collision detection
+    bullet.physicsBody = SKPhysicsBody(rectangleOf: bullet.size)
+    bullet.physicsBody?.categoryBitMask = PhysicsCategory.bullet
+    bullet.physicsBody?.contactTestBitMask = PhysicsCategory.target
+    bullet.physicsBody?.collisionBitMask = 0
+    bullet.physicsBody?.isDynamic = true
+    bullet.physicsBody?.affectedByGravity = false
+
+    // Calculate movement direction and speed
+    let dx = finalTargetPosition.x - startPosition.x
+    let dy = finalTargetPosition.y - startPosition.y
+    let distance = sqrt(dx * dx + dy * dy)
+
+    let bulletSpeed: CGFloat = 1500  // Much faster for instant response
+    let duration = TimeInterval(distance / bulletSpeed)
+
+    // Create movement action
+    let moveAction = SKAction.move(to: finalTargetPosition, duration: duration)
+    moveAction.timingMode = .linear
+
+    // Remove bullet after reaching target or going off screen
+    let removeAction = SKAction.removeFromParent()
+    let sequence = SKAction.sequence([moveAction, removeAction])
+
+    // Add bullet to scene and track it
+    addChild(bullet)
+    bullets.append(bullet)
+    bullet.run(sequence) { [weak self] in
+      self?.bullets.removeAll { $0 == bullet }
+    }
+
+    // Add visual trail effect for better visibility
+    addBulletTrail(to: bullet)
+  }
+
+  /// Add visual trail effect to bullet
+  private func addBulletTrail(to bullet: SKSpriteNode) {
+    let trail = SKEmitterNode()
+    trail.particleTexture = SKTexture(imageNamed: "spark")  // Will fallback gracefully if not found
+    trail.particleBirthRate = 100
+    trail.particleLifetime = 0.3
+    trail.particleScale = 0.1
+    trail.particleScaleRange = 0.05
+    trail.particleAlpha = 0.8
+    trail.particleAlphaRange = 0.2
+    trail.particleColor = .yellow
+    trail.particleColorBlendFactor = 1.0
+    trail.particleBlendMode = .add
+    trail.particlePositionRange = CGVector(dx: 2, dy: 2)
+    trail.particleSpeed = 20
+    trail.particleSpeedRange = 10
+    trail.emissionAngle = .pi / 2
+    trail.emissionAngleRange = .pi / 4
+    trail.targetNode = self
+
+    bullet.addChild(trail)
+  }
+
+  /// Find the nearest target to a given position
+  private func findNearestTarget(to position: CGPoint) -> SKSpriteNode? {
+    var nearestTarget: SKSpriteNode?
+    var nearestDistance: CGFloat = CGFloat.greatestFiniteMagnitude
+
+    // Check all circle targets
+    enumerateChildNodes(withName: "target_*") { node, _ in
+      if let targetNode = node as? SKShapeNode {
+        let distance = sqrt(
+          pow(targetNode.position.x - position.x, 2) + pow(targetNode.position.y - position.y, 2))
+
+        if distance < nearestDistance {
+          nearestDistance = distance
+          nearestTarget = SKSpriteNode()
+          nearestTarget?.position = targetNode.position
+        }
+      }
+    }
+
+    return nearestTarget
+  }
+
+  /// Handle shooting trigger from hand gesture detection
+  func handleShootingTrigger(handPosition: CGPoint? = nil) {
+    fireBullet(targetPosition: handPosition)
+  }
+
   // Convert normalized coordinates (0-1) to scene coordinates
   private func convertToSceneCoordinates(_ normalizedPoint: CGPoint) -> CGPoint {
     // Assuming the wrist points are normalized (0-1) coordinates
@@ -167,100 +298,49 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     return CGPoint(x: clampedX, y: clampedY)
   }
 
-  func updateSequenceLabel() {
-    sequenceLabel.text = "Next: \(currentSequenceNumber)/\(totalCirclesInSequence)"
-  }
-
   //MARK: - Spawning Logic
   func startSpawning() {
     let spawnAction = SKAction.run { [weak self] in
-      self?.spawnSequenceOfCircles()
+      self?.spawnTarget()
     }
-    let waitAction = SKAction.wait(forDuration: 3.0)  // Spawn sequence every 3 seconds
+    let waitAction = SKAction.wait(forDuration: 1.5)  // Spawn target every 1.5 seconds
     let sequenceAction = SKAction.sequence([spawnAction, waitAction])
     let repeatAction = SKAction.repeatForever(sequenceAction)
 
     run(repeatAction, withKey: "spawning")
   }
 
-  func spawnSequenceOfCircles() {
-    // Don't spawn if a sequence is already active
-    if isSequenceActive {
-      return
-    }
-
-    // Mark sequence as active
-    isSequenceActive = true
-
-    // Reset sequence tracking
-    currentSequenceNumber = 1
-
-    // Random number of circles in this sequence (3-6 circles)
-    totalCirclesInSequence = Int.random(in: 3...6)
-
-    // Update UI
-    updateSequenceLabel()
-
-    // Spawn all circles in the sequence
-    for i in 1...totalCirclesInSequence {
-      let delay = Double(i - 1) * 0.3  // Stagger spawning by 0.3 seconds
-
-      let spawnAction = SKAction.run { [weak self] in
-        self?.spawnNumberedCircle(number: i)
-      }
-      let waitAction = SKAction.wait(forDuration: delay)
-      let delayedSpawn = SKAction.sequence([waitAction, spawnAction])
-
-      run(delayedSpawn)
-    }
-  }
-
-  func spawnNumberedCircle(number: Int) {
+  func spawnTarget() {
     // Create circle
     let radius = CGFloat.random(in: 25...35)
     let circle = SKShapeNode(circleOfRadius: radius)
 
-    // Color based on sequence position
+    // Random color for variety
     let colors: [UIColor] = [.red, .green, .yellow, .orange, .purple, .cyan, .magenta, .brown]
-    circle.fillColor = colors[(number - 1) % colors.count]
+    circle.fillColor = colors.randomElement() ?? .blue
     circle.strokeColor = .white
     circle.lineWidth = 2
 
-    // Random position on screen (not just at top)
+    // Random position on screen
     let randomX = CGFloat.random(in: radius...(size.width - radius))
     let randomY = CGFloat.random(in: (radius + 150)...(size.height - radius - 100))
     circle.position = CGPoint(x: randomX, y: randomY)
 
-    // Store the sequence number in the node's name
-    circle.name = "circle_\(number)"
-
-    // Add number label inside circle
-    let numberLabel = SKLabelNode(fontNamed: "Arial-Bold")
-    numberLabel.text = "\(number)"
-    numberLabel.fontSize = 20
-    numberLabel.fontColor = .white
-    numberLabel.position = CGPoint.zero
-    numberLabel.verticalAlignmentMode = .center
-    circle.addChild(numberLabel)
+    // Simple target name without numbers
+    circle.name = "target_\(UUID().uuidString)"
 
     // Add physics body
     circle.physicsBody = SKPhysicsBody(circleOfRadius: radius)
     circle.physicsBody?.categoryBitMask = PhysicsCategory.target
-    circle.physicsBody?.contactTestBitMask = PhysicsCategory.player
+    circle.physicsBody?.contactTestBitMask = PhysicsCategory.bullet
     circle.physicsBody?.collisionBitMask = 0
     circle.physicsBody?.isDynamic = false  // Make circles static (no movement)
 
     addChild(circle)
 
-    // Remove circle after time limit and end sequence if time runs out
+    // Remove circle after time limit
     let timeoutAction = SKAction.sequence([
-      SKAction.wait(forDuration: 12.0),
-      SKAction.run { [weak self] in
-        // If this circle times out, end the sequence
-        if self?.isSequenceActive == true {
-          self?.handleSequenceTimeout()
-        }
-      },
+      SKAction.wait(forDuration: 8.0),
       SKAction.fadeOut(withDuration: 1.0),
       SKAction.removeFromParent(),
     ])
@@ -270,136 +350,49 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   // MARK: - Physics Contact
   func didBegin(_ contact: SKPhysicsContact) {
     var targetNode: SKNode?
+    var bulletNode: SKNode?
 
-    // Determine which node is the target circle
-    if contact.bodyA.categoryBitMask == PhysicsCategory.target {
+    // Only handle bullet-target collisions since hand circles no longer have physics bodies
+    if contact.bodyA.categoryBitMask == PhysicsCategory.target
+      && contact.bodyB.categoryBitMask == PhysicsCategory.bullet
+    {
       targetNode = contact.bodyA.node
-    } else if contact.bodyB.categoryBitMask == PhysicsCategory.target {
+      bulletNode = contact.bodyB.node
+    } else if contact.bodyA.categoryBitMask == PhysicsCategory.bullet
+      && contact.bodyB.categoryBitMask == PhysicsCategory.target
+    {
       targetNode = contact.bodyB.node
+      bulletNode = contact.bodyA.node
+    } else {
+      // No relevant collision detected
+      return
     }
 
     guard let target = targetNode,
-      let nodeName = target.name,
-      let numberString = nodeName.components(separatedBy: "_").last,
-      let circleNumber = Int(numberString)
+      let bullet = bulletNode
     else { return }
 
-    // Check if this is the correct number in sequence
-    if circleNumber == currentSequenceNumber {
-      // Only allow hit if shot gesture is detected
-      handleCorrectHit(target: target, number: circleNumber)
-    } else {
-      handleWrongHit(target: target, number: circleNumber)
-    }
+    // Remove the bullet on impact
+    bullet.removeFromParent()
+    bullets.removeAll { $0 == bullet }
+
+    // Award points for any hit
+    handleTargetHit(target: target)
   }
 
-  func handleCorrectHit(target: SKNode, number: Int) {
+  func handleTargetHit(target: SKNode) {
     // Add score
-    score += number * 10  // More points for later numbers in sequence
+    score += 10
     scoreLabel.text = "Score: \(score)"
 
     // Create success effect
-    createEffect(at: target.position, text: "+\(number * 10)", color: .green)
+    createEffect(at: target.position, text: "+10", color: .green)
 
     // Remove the target
     target.removeFromParent()
 
-    // Progress to next number in sequence
-    currentSequenceNumber += 1
-    updateSequenceLabel()
-
-    // Check if sequence is complete
-    if currentSequenceNumber > totalCirclesInSequence {
-      handleSequenceComplete()
-    }
-
     // Animate score label
     animateScoreLabel()
-  }
-
-  func handleWrongHit(target: SKNode, number: Int) {
-    // Penalty for wrong sequence
-    score = max(0, score - 20)
-    scoreLabel.text = "Score: \(score)"
-
-    // Create error effect
-    createEffect(at: target.position, text: "WRONG!", color: .red)
-
-    // Flash the target red
-    let flashRed = SKAction.colorize(with: .red, colorBlendFactor: 0.8, duration: 0.1)
-    let flashBack = SKAction.colorize(with: .clear, colorBlendFactor: 0, duration: 0.1)
-    let flashSequence = SKAction.sequence([flashRed, flashBack, flashRed, flashBack])
-    target.run(flashSequence)
-
-    // End current sequence and allow new one
-    endCurrentSequence()
-  }
-
-  func endCurrentSequence() {
-    // Remove all remaining circles from current sequence
-    enumerateChildNodes(withName: "circle_*") { node, _ in
-      node.removeFromParent()
-    }
-
-    // Reset sequence state
-    currentSequenceNumber = 1
-    totalCirclesInSequence = 0
-    isSequenceActive = false
-    sequenceLabel.text = "Sequence Failed!"
-
-    // Flash sequence label red
-    let flashRed = SKAction.colorize(with: .red, colorBlendFactor: 1.0, duration: 0.3)
-    let flashBack = SKAction.colorize(with: .yellow, colorBlendFactor: 1.0, duration: 0.3)
-    let waitAction = SKAction.wait(forDuration: 1.0)
-    let resetText = SKAction.run { [weak self] in
-      self?.sequenceLabel.text = "Get Ready..."
-    }
-
-    sequenceLabel.run(SKAction.sequence([flashRed, flashBack, waitAction, resetText]))
-  }
-
-  func handleSequenceComplete() {
-    // Bonus points for completing sequence
-    let bonusPoints = totalCirclesInSequence * 20
-    score += bonusPoints
-    scoreLabel.text = "Score: \(score)"
-
-    // Create completion effect
-    createEffect(
-      at: CGPoint(x: size.width / 2, y: size.height / 2),
-      text: "SEQUENCE COMPLETE!\n+\(bonusPoints) BONUS",
-      color: .yellow)
-
-    // Reset for next sequence
-    currentSequenceNumber = 1
-    totalCirclesInSequence = 0
-    isSequenceActive = false  // Allow new sequences to spawn
-    sequenceLabel.text = "Get Ready..."
-
-    // Flash screen effect
-    let flashOverlay = SKSpriteNode(color: .yellow, size: size)
-    flashOverlay.alpha = 0.3
-    flashOverlay.position = CGPoint(x: size.width / 2, y: size.height / 2)
-    addChild(flashOverlay)
-
-    let fadeOut = SKAction.fadeOut(withDuration: 0.5)
-    let remove = SKAction.removeFromParent()
-    flashOverlay.run(SKAction.sequence([fadeOut, remove]))
-  }
-
-  func handleSequenceTimeout() {
-    // Penalty for letting sequence timeout
-    score = max(0, score - 30)
-    scoreLabel.text = "Score: \(score)"
-
-    // Create timeout effect
-    createEffect(
-      at: CGPoint(x: size.width / 2, y: size.height / 2),
-      text: "TIME OUT!\n-30 POINTS",
-      color: .red)
-
-    // End current sequence
-    endCurrentSequence()
   }
 
   func createEffect(at position: CGPoint, text: String, color: UIColor) {
@@ -466,8 +459,21 @@ struct SpriteView: View {
           gameScene.updateCirclesWithHandData(viewModel.handDetectionService.handDetectionData)
         }
         .onReceive(viewModel.handDetectionService.$handDetectionData) { newData in
-          //          print("Received hand data update - isDetected: \(newData.isDetected), wristPoints: \(newData.fingerPointsPerHand.count)")
           gameScene.updateCirclesWithHandData(newData)
+        }
+        .onReceive(viewModel.handDetectionService.$shootingTrigger) { shouldShoot in
+          if shouldShoot {
+            // Get the position of the hand that triggered the shooting
+            var targetPosition: CGPoint?
+
+            if let triggeringHand = viewModel.handDetectionService.triggeringHand {
+              let palmPosition = TargetImageCalculations.calculatePalmPosition(for: triggeringHand)
+              // Convert to scene coordinates (flip Y axis)
+              targetPosition = CGPoint(x: palmPosition.x, y: geometry.size.height - palmPosition.y)
+            }
+
+            gameScene.handleShootingTrigger(handPosition: targetPosition)
+          }
         }
     }
   }

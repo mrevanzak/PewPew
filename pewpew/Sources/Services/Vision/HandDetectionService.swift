@@ -8,6 +8,7 @@
 import AVFoundation
 import CoreGraphics
 import Foundation
+import UIKit
 import Vision
 
 /// Service responsible for hand detection and tracking
@@ -15,6 +16,9 @@ import Vision
 class HandDetectionService: ObservableObject {
   // Published properties for UI updates
   @Published var handDetectionData = HandDetectionData.empty
+  @Published var currentHandGestures: [String: HandGestureState] = [:]  // Chirality -> GestureState
+  @Published var shootingTrigger = false  // Instant trigger for shooting
+  @Published var triggeringHand: HandPoints? = nil  // Hand that triggered the shooting
 
   // Vision request for hand pose detection
   private var handPoseRequest: VNDetectHumanHandPoseRequest
@@ -24,6 +28,15 @@ class HandDetectionService: ObservableObject {
 
   // Current video orientation for proper coordinate conversion
   private var currentVideoOrientation: AVCaptureVideoOrientation = .portrait
+
+  // Gesture detection state tracking
+  private var previousGestures: [String: HandGesture] = [:]
+  private let gestureStabilityThreshold = 2  // Require 2 consecutive frames for stability
+  private var gestureCounters: [String: [HandGesture: Int]] = [:]
+  private var lastShootTime: [String: Date] = [:]  // Prevent rapid-fire shooting
+  private var transitionProcessed: [String: Bool] = [:]  // Track if transition was already processed
+  private var handPositions: [String: CGPoint] = [:]  // Track hand positions for stability
+  private var lastValidTransitionTime: Date = Date.distantPast  // Global cooldown
 
   init() {
     // Initialize hand pose detection request
@@ -166,6 +179,9 @@ class HandDetectionService: ObservableObject {
       isDetected: !detectedHands.isEmpty,
       confidence: averageConfidence
     )
+
+    // Process hand gestures for shooting detection
+    processHandGestures(detectedHands)
   }
 }
 
@@ -214,6 +230,193 @@ extension [VNHumanHandPoseObservation.JointName: VNRecognizedPoint] {
     arr.append(self[.littlePIP]!)
     arr.append(self[.littleMCP]!)
     return arr.reversed()
+  }
+}
+
+// MARK: - Hand Gesture Detection Extension
+extension HandDetectionService {
+  /// Process hand gestures to detect palm-to-fist transitions for shooting
+  private func processHandGestures(_ hands: [HandPoints]) {
+    var currentFrameGestures: [String: HandGesture] = [:]
+
+    // Global cooldown to prevent any shooting for a short period
+    let currentTime = Date()
+    let globalCooldown: TimeInterval = 0.5
+    let canShootGlobally = currentTime.timeIntervalSince(lastValidTransitionTime) >= globalCooldown
+
+    // Only process if we have exactly one or two hands (prevent confusion with multiple hands)
+    guard hands.count <= 2 else {
+      return
+    }
+
+    // Detect current gesture for each hand
+    for hand in hands {
+      let gesture = detectHandGesture(hand)
+      let palmPosition = TargetImageCalculations.calculatePalmPosition(for: hand)
+
+      // Check if this hand position is stable (not jumping around)
+      let isPositionStable: Bool
+      if let previousPos = handPositions[hand.chirality] {
+        let distance = sqrt(
+          pow(palmPosition.x - previousPos.x, 2) + pow(palmPosition.y - previousPos.y, 2))
+        isPositionStable = distance < 50  // Hand hasn't moved more than 50 pixels
+      } else {
+        isPositionStable = true  // First detection
+      }
+
+      // Update hand position
+      handPositions[hand.chirality] = palmPosition
+
+      currentFrameGestures[hand.chirality] = gesture
+
+      // Only process gestures if position is stable
+      if isPositionStable {
+        // Initialize counter if needed
+        if gestureCounters[hand.chirality] == nil {
+          gestureCounters[hand.chirality] = [.openPalm: 0, .fist: 0, .unknown: 0]
+        }
+
+        // Update gesture counter
+        gestureCounters[hand.chirality]?[gesture, default: 0] += 1
+
+        // Reset other gesture counters
+        for gestureType in [HandGesture.openPalm, .fist, .unknown] {
+          if gestureType != gesture {
+            gestureCounters[hand.chirality]?[gestureType] = 0
+          }
+        }
+
+        // Check for stable gesture detection
+        if let count = gestureCounters[hand.chirality]?[gesture], count >= gestureStabilityThreshold
+        {
+          let previousGesture = previousGestures[hand.chirality]
+
+          // Only trigger if THIS SPECIFIC HAND transitioned from fist to open palm
+          // AND we can shoot globally AND we haven't processed this transition
+          if previousGesture == .fist && gesture == .openPalm && canShootGlobally {
+            if transitionProcessed[hand.chirality] != true {
+              triggerShooting(for: hand)
+              lastShootTime[hand.chirality] = currentTime
+              lastValidTransitionTime = currentTime
+              transitionProcessed[hand.chirality] = true
+            }
+          }
+
+          // Reset transition flag when returning to fist (ready for next shot)
+          if gesture == .fist {
+            transitionProcessed[hand.chirality] = false
+          }
+
+          // Update gesture state
+          currentHandGestures[hand.chirality] = HandGestureState(gesture: gesture)
+          previousGestures[hand.chirality] = gesture
+
+          // Reset counter after stable detection
+          gestureCounters[hand.chirality]?[gesture] = 0
+        }
+      }
+    }
+
+    // Clean up gestures for hands no longer detected
+    let detectedChiralities = Set(hands.map { $0.chirality })
+    for chirality in currentHandGestures.keys {
+      if !detectedChiralities.contains(chirality) {
+        currentHandGestures.removeValue(forKey: chirality)
+        previousGestures.removeValue(forKey: chirality)
+        gestureCounters.removeValue(forKey: chirality)
+        transitionProcessed.removeValue(forKey: chirality)
+        lastShootTime.removeValue(forKey: chirality)
+        handPositions.removeValue(forKey: chirality)
+      }
+    }
+  }
+
+  /// Detect hand gesture based on finger positions
+  private func detectHandGesture(_ hand: HandPoints) -> HandGesture {
+    // Calculate if fingers are extended or curled
+    let thumbExtended = isThumbExtended(hand)
+    let indexExtended = isFingerExtended(hand.index)
+    let middleExtended = isFingerExtended(hand.middle)
+    let ringExtended = isFingerExtended(hand.ring)
+    let littleExtended = isFingerExtended(hand.little)
+
+    let extendedFingers = [
+      thumbExtended, indexExtended, middleExtended, ringExtended, littleExtended,
+    ]
+    let extendedCount = extendedFingers.filter { $0 }.count
+
+    // More lenient gesture detection for easier triggering
+    if extendedCount >= 3 {  // Reduced from 4 to 3
+      return .openPalm
+    } else if extendedCount <= 2 {  // Increased from 1 to 2
+      return .fist
+    } else {
+      return .unknown
+    }
+  }
+
+  /// Check if a finger is extended based on joint positions
+  private func isFingerExtended(_ fingerPoints: [CGPoint]) -> Bool {
+    guard fingerPoints.count >= 4 else { return false }
+
+    // Points are ordered from base to tip: [MCP, PIP, DIP, TIP]
+    let mcp = fingerPoints[0]  // Base joint
+    let pip = fingerPoints[1]  // First joint
+    let dip = fingerPoints[2]  // Second joint
+    let tip = fingerPoints[3]  // Fingertip
+
+    // Calculate the distances from base to each joint
+    let mcpToPip = distance(from: mcp, to: pip)
+    let mcpToDip = distance(from: mcp, to: dip)
+    let mcpToTip = distance(from: mcp, to: tip)
+
+    // More lenient finger extension detection
+    // A finger is extended if the tip is reasonably far from the base
+    let isExtended = mcpToTip > mcpToPip * 1.2  // Reduced strictness
+
+    return isExtended
+  }
+
+  /// Check if thumb is extended (different logic due to thumb anatomy)
+  private func isThumbExtended(_ hand: HandPoints) -> Bool {
+    guard hand.thumb.count >= 4 else { return false }
+
+    // For thumb: [CMC, MCP, IP, TIP]
+    let cmc = hand.thumb[0]  // Base
+    let tip = hand.thumb[3]  // Tip
+
+    // Distance from wrist to thumb tip vs wrist to thumb base
+    let wristToTip = distance(from: hand.wrist, to: tip)
+    let wristToBase = distance(from: hand.wrist, to: cmc)
+
+    // More lenient thumb detection
+    return wristToTip > wristToBase * 1.1  // Reduced from 1.3 to 1.1
+  }
+
+  /// Calculate distance between two points
+  private func distance(from point1: CGPoint, to point2: CGPoint) -> CGFloat {
+    let dx = point2.x - point1.x
+    let dy = point2.y - point1.y
+    return sqrt(dx * dx + dy * dy)
+  }
+
+  /// Trigger shooting event when palm-to-fist gesture detected
+  private func triggerShooting(for hand: HandPoints) {
+    // Store the hand that triggered the shooting
+    triggeringHand = hand
+
+    // Set shooting trigger to true momentarily for instant response
+    shootingTrigger = true
+
+    // Reset trigger after a very short delay to allow for detection
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+      self?.shootingTrigger = false
+      self?.triggeringHand = nil
+    }
+
+    // Provide haptic feedback for instant response
+    let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    impactFeedback.impactOccurred()
   }
 }
 

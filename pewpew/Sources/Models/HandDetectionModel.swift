@@ -33,84 +33,6 @@ struct HandDetectionData {
   )
 }
 
-/// Model for collision detection results
-struct CollisionResult {
-  let hasCollision: Bool
-  let overlapPercentage: CGFloat
-  let collisionPoint: CGPoint?
-
-  static let noCollision = CollisionResult(
-    hasCollision: false,
-    overlapPercentage: 0.0,
-    collisionPoint: nil
-  )
-}
-
-/// Model representing a sequence circle in the game
-struct SequenceCircle: Identifiable {
-  let id = UUID()
-  let sequenceNumber: Int
-  let position: CGPoint
-  let size: CGFloat
-  let color: Color
-  let spawnTime: Date
-  var isHit: Bool = false
-
-  init(sequenceNumber: Int, position: CGPoint, size: CGFloat = 80, color: Color = .blue) {
-    self.sequenceNumber = sequenceNumber
-    self.position = position
-    self.size = size
-    self.color = color
-    self.spawnTime = Date()
-  }
-}
-
-/// Game state for sequence-based gameplay
-struct GameState {
-  var health: Int = 3
-  var score: Int = 0
-  var currentSequence: Int = 1
-  var nextSequenceToSpawn: Int = 1
-  var isGameOver: Bool = false
-  var isGameWon: Bool = false
-
-  // Game configuration
-  let maxHealth: Int = 3
-  let maxSequenceNumbers: Int = 5
-  let circleLifetime: TimeInterval = 5.0
-
-  mutating func reset() {
-    health = maxHealth
-    score = 0
-    currentSequence = 1
-    nextSequenceToSpawn = 1
-    isGameOver = false
-    isGameWon = false
-  }
-
-  mutating func takeDamage() {
-    health = max(0, health - 1)
-    if health <= 0 {
-      isGameOver = true
-    }
-  }
-
-  mutating func scorePoint() {
-    score += 1
-    currentSequence += 1
-
-    // Check if player completed the sequence
-    if currentSequence > maxSequenceNumbers {
-      isGameWon = true
-    }
-  }
-
-  mutating func resetSequence() {
-    currentSequence = 1
-    nextSequenceToSpawn = 1
-  }
-}
-
 /// Errors that can occur during hand detection
 enum HandDetectionError: Error {
   case captureSessionSetup(reason: String)
@@ -126,5 +48,25 @@ enum HandDetectionError: Error {
     case .otherError(let error):
       return "Error: \(error.localizedDescription)"
     }
+  }
+}
+
+/// Hand gesture states for shooting detection
+enum HandGesture {
+  case openPalm
+  case fist
+  case unknown
+}
+
+/// Model for tracking hand gesture states and transitions
+struct HandGestureState {
+  let gesture: HandGesture
+  let confidence: Float
+  let timestamp: Date
+
+  init(gesture: HandGesture, confidence: Float = 1.0) {
+    self.gesture = gesture
+    self.confidence = confidence
+    self.timestamp = Date()
   }
 }
