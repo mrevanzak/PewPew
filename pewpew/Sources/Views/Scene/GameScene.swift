@@ -13,12 +13,9 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   private var circle1: SKShapeNode?
   private var circle2: SKShapeNode?
 
-  var score = 0
+  weak var viewModel: GameViewModel?
   var scoreLabel: SKLabelNode!
   var isSpawning = false
-
-  // Bullet system
-  var bullets = 50
   var bulletLabel: SKLabelNode!
   let maxBullets = 100
 
@@ -53,14 +50,14 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
 
   func setupUI() {
     scoreLabel = SKLabelNode(fontNamed: "Arial-Bold")
-    scoreLabel.text = "Score: 0"
+    scoreLabel.text = "Score: \(viewModel?.score ?? 0)"
     scoreLabel.fontSize = 24
     scoreLabel.fontColor = .white
     scoreLabel.position = CGPoint(x: 100, y: size.height - 50)
     addChild(scoreLabel)
     
     bulletLabel = SKLabelNode(fontNamed: "Arial-Bold")
-    bulletLabel.text = "Bullets: \(bullets)"
+    bulletLabel.text = "Bullets: \(viewModel?.bullets ?? 0)"
     bulletLabel.fontSize = 24
     bulletLabel.fontColor = .yellow
     bulletLabel.position = CGPoint(x: 100, y: size.height - 90)
@@ -188,7 +185,8 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
 
   func spawnMovingCircle() {
     let radius = CGFloat.random(in: 25...35)
-    let isBulletTarget = Bool.random() && score > 0 // 50% chance, but not at start
+    // Make bullet target spawn more rarely (20% chance if score > 0)
+    let isBulletTarget = (viewModel?.score ?? 0) > 0 && Double.random(in: 0...1) < 0.2
     let circle: SKShapeNode
     if isBulletTarget {
       // Square for bullet target
@@ -205,7 +203,13 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     circle.strokeColor = .white
     circle.lineWidth = 2
     // Random start and end positions on opposite edges
-    let edges = ["left", "right", "top", "bottom"]
+    let edges: [String]
+    if isBulletTarget {
+      // Always spawn bullet target from top to bottom
+      edges = ["top"]
+    } else {
+      edges = ["left", "right", "top", "bottom"]
+    }
     let startEdge = edges.randomElement() ?? "left"
     var startPosition = CGPoint.zero
     var endPosition = CGPoint.zero
@@ -314,8 +318,8 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
 
   func handleCorrectHit(target: SKNode) {
-    score += 10
-    scoreLabel.text = "Score: \(score)"
+    viewModel?.score += 10
+    scoreLabel.text = "Score: \(viewModel?.score ?? 0)"
     createEffect(at: target.position, text: "+10", color: .green)
     target.removeFromParent()
     animateScoreLabel()
@@ -323,8 +327,10 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
 
   func handleBulletHit(target: SKNode) {
     let gain = 10
-    bullets = min(bullets + gain, maxBullets)
-    bulletLabel.text = "Bullets: \(bullets)"
+    if let vm = viewModel {
+      vm.bullets = min(vm.bullets + gain, maxBullets)
+      bulletLabel.text = "Bullets: \(vm.bullets)"
+    }
     createEffect(at: target.position, text: "+\(gain) Bullets", color: .cyan)
     target.removeFromParent()
     animateBulletLabel()
@@ -344,10 +350,18 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     scoreLabel.run(scaleSequence)
   }
   
+  var onGameOver: (() -> Void)?
+  
   func spawnProjectile(at targetPosition: CGPoint) {
-    guard bullets > 0 else { return } // No bullets left
-    bullets -= 1
-    bulletLabel.text = "Bullets: \(bullets)"
+    guard let vm = viewModel, vm.bullets > 0 else { return }
+    vm.bullets -= 1
+    bulletLabel.text = "Bullets: \(vm.bullets)"
+    if vm.bullets == 0 {
+      onGameOver?()
+      removeAllActions()
+      isSpawning = false
+      return
+    }
     // Start at bottom center
     let start = CGPoint(x: size.width / 2, y: 0)
     let projectile = SKShapeNode(circleOfRadius: 12)
@@ -405,6 +419,15 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     scoreLabel?.position = CGPoint(x: padding + scoreLabel.frame.width/2, y: size.height - padding)
     bulletLabel?.position = CGPoint(x: padding + bulletLabel.frame.width/2, y: size.height - padding - scoreLabel.frame.height - 8)
   }
+  
+  func resetScene() {
+    // Remove all targets and projectiles
+    removeAllChildren()
+    setupUI()
+    createHandControlledCircles()
+    isSpawning = false
+    removeAllActions()
+  }
 }
 
 // MARK: - SwiftUI Wrapper
@@ -433,6 +456,12 @@ struct SpriteView: View {
     self.viewModel = viewModel
     let scene = GameScene()
     scene.handDetectionService = viewModel.handDetectionService
+    scene.viewModel = viewModel
+    scene.onGameOver = { [weak viewModel] in
+      DispatchQueue.main.async {
+        viewModel?.gameOver(finalScore: viewModel?.score ?? 0)
+      }
+    }
     _gameScene = State(initialValue: scene)
   }
   
@@ -442,11 +471,22 @@ struct SpriteView: View {
         .onAppear {
           gameScene.size = geometry.size
           gameScene.scaleMode = .aspectFill
-          // Update immediately with current data
           gameScene.updateCirclesWithHandData(viewModel.handDetectionService.handDetectionData)
         }
         .onReceive(viewModel.handDetectionService.$handDetectionData) { newData in
           gameScene.updateCirclesWithHandData(newData)
+        }
+        .onChange(of: viewModel.score) { _, newScore in
+          gameScene.scoreLabel?.text = "Score: \(newScore)"
+        }
+        .onChange(of: viewModel.bullets) { _, newBullets in
+          gameScene.bulletLabel?.text = "Bullets: \(newBullets)"
+        }
+        .onChange(of: viewModel.isGameOver) { _, isGameOver in
+          if !isGameOver {
+            gameScene.resetScene()
+            gameScene.startSpawning()
+          }
         }
     }
   }

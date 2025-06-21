@@ -22,6 +22,7 @@ class GameViewModel: ObservableObject {
   @Published var viewSize: CGSize = .zero
   @Published var score = 0
   @Published var gameStarted = false
+  @Published var isGameOver: Bool = false
   
   // Random spawn properties
   @Published var shapePosition: CGPoint = .zero
@@ -35,6 +36,10 @@ class GameViewModel: ObservableObject {
   private let minSpawnDelay: Double = 1.0
   private let maxSpawnDelay: Double = 4.0
   private let shapeVisibleDuration: Double = 3.0
+
+  // Bullet system state for SpriteKit
+  @Published var bullets: Int = 10
+  let maxBullets = 100
 
   private var cancellables = Set<AnyCancellable>()
   private var spawnTimer: Timer?
@@ -184,5 +189,24 @@ class GameViewModel: ObservableObject {
     // Add haptic feedback
     let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     impactFeedback.impactOccurred()
+  }
+
+  /// Called by GameScene when bullets reach zero
+  func gameOver(finalScore: Int? = nil) {
+    isGameOver = true
+    gameStarted = false
+    stopGame()
+    if let score = finalScore {
+      self.score = score
+    }
+  }
+
+  /// Replay the game (reset state)
+  func replayGame() {
+    score = 0
+    bullets = maxBullets
+    isGameOver = false
+    gameStarted = false
+    startGame()
   }
 }
