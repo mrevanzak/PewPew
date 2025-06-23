@@ -213,8 +213,7 @@ class HandDetectionService: ObservableObject {
     guard fingerPoints.count >= 5 else { return false }
     let distances = fingerPoints.map { tip in hypot(tip.x - palm.x, tip.y - palm.y) }
     let avg = distances.reduce(0, +) / CGFloat(distances.count)
-    print("[HandDetectionService] avg finger-palm distance: \(avg) (threshold: 0.12)")
-    return avg > 0.10  // normalized threshold, may need tuning
+    return avg > 0.10 // normalized threshold, may need tuning
   }
 
   // Returns true if the specified hand is open

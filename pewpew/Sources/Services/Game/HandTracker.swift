@@ -36,8 +36,7 @@ final class HandTracker: HandTracking {
   func updateHandCircles(with handData: HandDetectionData) {
     updateLeftHandCircle(with: handData)
     updateRightHandCircle(with: handData)
-
-    // Remove all circles if no hands detected
+    
     if !handData.isDetected {
       removeAllHandCircles()
     }
@@ -53,36 +52,46 @@ final class HandTracker: HandTracking {
   // MARK: - Private Helpers
 
   private func updateLeftHandCircle(with handData: HandDetectionData) {
-    guard let leftPalm = handData.leftPalmPoint else {
-      leftHandCircle?.removeFromParent()
-      leftHandCircle = nil
-      return
-    }
-
-    let scenePoint = coordinateConverter.convertToSceneCoordinates(leftPalm)
-
-    if leftHandCircle == nil {
-      leftHandCircle = createHandCircle(for: .left, at: scenePoint)
-      scene?.addChild(leftHandCircle!)
+    if let leftPalm = handData.leftPalmPoint {
+      let scenePoint = coordinateConverter.convertToSceneCoordinates(leftPalm)
+      
+      if let leftHandCircle = leftHandCircle {
+        if leftHandCircle.parent == nil {
+          scene?.addChild(leftHandCircle)
+        }
+        animateHandCircle(leftHandCircle, to: scenePoint)
+      } else {
+        leftHandCircle = createHandCircle(for: .left, at: leftPalm)
+        if let leftHandCircle = leftHandCircle {
+          scene?.addChild(leftHandCircle)
+        }
+      }
     } else {
-      animateHandCircle(leftHandCircle!, to: scenePoint)
+      if let leftHandCircle = leftHandCircle {
+        leftHandCircle.removeFromParent()
+      }
     }
   }
 
   private func updateRightHandCircle(with handData: HandDetectionData) {
-    guard let rightPalm = handData.rightPalmPoint else {
-      rightHandCircle?.removeFromParent()
-      rightHandCircle = nil
-      return
-    }
-
-    let scenePoint = coordinateConverter.convertToSceneCoordinates(rightPalm)
-
-    if rightHandCircle == nil {
-      rightHandCircle = createHandCircle(for: .right, at: scenePoint)
-      scene?.addChild(rightHandCircle!)
+    if let rightPalm = handData.rightPalmPoint {
+      let scenePoint = coordinateConverter.convertToSceneCoordinates(rightPalm)
+      
+      if let rightHandCircle = rightHandCircle {
+        if rightHandCircle.parent == nil {
+          scene?.addChild(rightHandCircle)
+        }
+        animateHandCircle(rightHandCircle, to: scenePoint)
+      } else {
+        rightHandCircle = createHandCircle(for: .right, at: rightPalm)
+        if let rightHandCircle = rightHandCircle {
+          scene?.addChild(rightHandCircle)
+        }
+      }
     } else {
-      animateHandCircle(rightHandCircle!, to: scenePoint)
+      if let rightHandCircle = rightHandCircle {
+        rightHandCircle.removeFromParent()
+      }
     }
   }
 
@@ -119,9 +128,7 @@ final class HandTracker: HandTracking {
 
   private func removeAllHandCircles() {
     leftHandCircle?.removeFromParent()
-    leftHandCircle = nil
     rightHandCircle?.removeFromParent()
-    rightHandCircle = nil
   }
 
   private func detectLeftHandGesture(handData: HandDetectionData, service: HandDetectionService) {

@@ -25,10 +25,10 @@ enum GameConfiguration {
 
   // MARK: - Game Constants
   enum Game {
-    static let maxBullets = 100
+    static let maxBullets = 20
     static let initialBullets = 10
     static let targetScoreValue = 10
-    static let bulletReward = 10
+    static let bulletReward = 3
     static let projectileSpeed: CGFloat = 900.0
     static let handDetectionConfidenceThreshold: Float = 0.5
     static let handOpenThreshold: CGFloat = 0.10

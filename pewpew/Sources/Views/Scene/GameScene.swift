@@ -7,6 +7,7 @@
 
 import SpriteKit
 import SwiftUI
+import Combine
 
 // MARK: - Clean Game Scene
 final class GameScene: SKScene {
@@ -23,6 +24,9 @@ final class GameScene: SKScene {
   private var projectileManager: ProjectileManager?
   private var uiManager: GameUIManager?
   private var coordinateConverter: CoordinateConverter?
+
+  // Combine subscriptions for observing score/bullets
+  private var subscriptions = Set<AnyCancellable>()
 
   // MARK: - Lifecycle
   override func didMove(to view: SKView) {
@@ -47,6 +51,20 @@ final class GameScene: SKScene {
     guard let scoreManager = scoreManager,
       let coordinateConverter = coordinateConverter
     else { return }
+
+    // Observe score and bullets changes
+    scoreManager.$currentScore
+      .receive(on: RunLoop.main)
+      .sink { [weak self] _ in
+        self?.updateUIWithCurrentValues()
+      }
+      .store(in: &subscriptions)
+    scoreManager.$currentBullets
+      .receive(on: RunLoop.main)
+      .sink { [weak self] _ in
+        self?.updateUIWithCurrentValues()
+      }
+      .store(in: &subscriptions)
 
     projectileManager = ProjectileManager(scene: self, scoreManager: scoreManager)
     targetSpawner = TargetSpawner(scene: self, scoreManager: scoreManager)
