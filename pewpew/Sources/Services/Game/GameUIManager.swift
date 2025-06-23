@@ -32,7 +32,7 @@ final class GameUIManager: GameUIUpdating {
   func showEffect(at position: CGPoint, text: String, color: UIColor) {
     guard let scene = scene else { return }
 
-    let effectLabel = SKLabelNode(fontNamed: "Arial-Bold")
+    let effectLabel = SKLabelNode(fontNamed: "Worktalk")
     effectLabel.text = text
     effectLabel.fontSize = GameConfiguration.UI.effectFontSize
     effectLabel.fontColor = color

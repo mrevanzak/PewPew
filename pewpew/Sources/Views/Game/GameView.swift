@@ -87,28 +87,35 @@ struct GameOverOverlayView: View {
   let score: Int
   let onReplay: () -> Void
   var body: some View {
-    VStack(spacing: 24) {
-      Text("Game Over")
-        .font(.largeTitle)
-        .fontWeight(.bold)
-        .foregroundColor(.red)
-      Text("Score: \(score)")
-        .font(.title2)
-        .foregroundColor(.primary)
-      Button(action: onReplay) {
-        Text("Replay")
-          .font(.title3)
-          .fontWeight(.semibold)
-          .padding(.horizontal, 32)
-          .padding(.vertical, 12)
-          .background(Color.blue)
-          .foregroundColor(.white)
-          .cornerRadius(10)
+    ZStack {
+      Image("menu")
+        .resizable()
+        .aspectRatio(contentMode: .fill)
+        .ignoresSafeArea()
+      
+      VStack(spacing: 24) {
+        Text("Game Over")
+          .font(.largeTitle)
+          .fontWeight(.bold)
+          .foregroundColor(.red)
+        Text("Score: \(score)")
+          .font(.title2)
+          .foregroundColor(.primary)
+        Button(action: onReplay) {
+          Text("Replay")
+            .font(.title3)
+            .fontWeight(.semibold)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 12)
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+        }
       }
+      .padding(40)
+      .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
+      .shadow(radius: 20)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    .padding(40)
-    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
-    .shadow(radius: 20)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 }

@@ -43,6 +43,7 @@ final class TargetSpawner: TargetSpawning {
 
     let targetSize = CGFloat.random(
       in: GameConfiguration.Target.minSize...GameConfiguration.Target.maxSize)
+    
     let shouldSpawnBulletTarget =
       scoreManager.currentScore > 0
       && Double.random(in: 0...1) < GameConfiguration.Target.bulletTargetSpawnChance
@@ -57,15 +58,19 @@ final class TargetSpawner: TargetSpawning {
     target.position = startPosition
     scene.addChild(target)
 
-    animateTarget(target, to: endPosition, isAlien: isAlien)
+    animateTarget(target, to: endPosition)
   }
 
   // MARK: - Target Creation
 
   private func createBulletTarget(size: CGFloat) -> SKSpriteNode {
-    let target = SKSpriteNode(color: .cyan, size: CGSize(width: size, height: size))
+    let texture = SKTexture(imageNamed: AssetName.lootbox)
+    let aspectRatio = texture.size().width / texture.size().height
+    let targetSize = CGSize(width: size * aspectRatio * 2, height: size * 2)
+
+    let target = SKSpriteNode(texture: texture, color: .clear, size: targetSize)
     target.name = NodeName.bulletTarget
-    target.physicsBody = SKPhysicsBody(rectangleOf: target.size)
+    target.physicsBody = SKPhysicsBody(texture: texture, size: targetSize)
     setupPhysicsBody(for: target)
     return target
   }
@@ -124,25 +129,23 @@ final class TargetSpawner: TargetSpawning {
 
   // MARK: - Animation
 
-  private func animateTarget(_ target: SKSpriteNode, to endPosition: CGPoint, isAlien: Bool) {
+  private func animateTarget(_ target: SKSpriteNode, to endPosition: CGPoint) {
     let distance = hypot(endPosition.x - target.position.x, endPosition.y - target.position.y)
     let speed = CGFloat.random(in: GameConfiguration.Target.targetSpeed)
     let duration = distance / speed
-
+    
     let moveAction = SKAction.move(to: endPosition, duration: duration)
     let removeAction = SKAction.removeFromParent()
-
-    // Add wiggle animation for aliens (UFOs)
-    if isAlien {
-      let wiggle = SKAction.sequence([
-        SKAction.rotate(byAngle: 0.08, duration: 0.18),
-        SKAction.rotate(byAngle: -0.16, duration: 0.36),
-        SKAction.rotate(byAngle: 0.08, duration: 0.18),
-      ])
-      let wiggleForever = SKAction.repeatForever(wiggle)
-      target.run(wiggleForever)
-    }
-
+    
+    let wiggle = SKAction.sequence([
+      SKAction.rotate(byAngle: 0.08, duration: 0.18),
+      SKAction.rotate(byAngle: -0.16, duration: 0.36),
+      SKAction.rotate(byAngle: 0.08, duration: 0.18),
+    ])
+    let wiggleForever = SKAction.repeatForever(wiggle)
+    target.run(wiggleForever)
+    
+    
     target.run(SKAction.sequence([moveAction, removeAction]))
   }
 }

@@ -64,6 +64,7 @@ enum AssetName {
   static let alienCrash = "alienCrash"
   static let shootMark = "shootMark"
   static let crosshair = "crosshair"
+  static let lootbox = "lootbox"
 }
 
 // MARK: - Animation Configurations
