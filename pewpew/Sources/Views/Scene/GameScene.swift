@@ -189,11 +189,30 @@ extension GameScene: SKPhysicsContactDelegate {
   }
 
   private func createAlienCrashEffect(for sprite: SKSpriteNode) {
+    // Stop all existing actions (movement and wiggle)
+    sprite.removeAllActions()
+
     let crashTexture = SKTexture(imageNamed: AssetName.alienCrash)
+
+    // Create a better death animation sequence
+    let stopMovement = SKAction.run {
+      sprite.physicsBody?.velocity = CGVector(dx: 0, dy: 0)
+    }
+
+    let shortPause = SKAction.wait(forDuration: 0.1)
     let setCrash = SKAction.run { sprite.texture = crashTexture }
+    let holdDeadImage = SKAction.wait(forDuration: 0.2)  // Show dead alien longer
     let fadeOut = SKAction.fadeOut(withDuration: 0.4)
     let remove = SKAction.removeFromParent()
-    let crashSequence = SKAction.sequence([setCrash, fadeOut, remove])
+
+    let crashSequence = SKAction.sequence([
+      stopMovement,
+      shortPause,
+      setCrash,
+      holdDeadImage,
+      fadeOut,
+      remove,
+    ])
 
     sprite.run(crashSequence)
   }
