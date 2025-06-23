@@ -2,173 +2,101 @@
 //  GameViewModel.swift
 //  pewpew
 //
-//  ViewModel for game logic and state management
+//  Clean ViewModel focused only on state management and coordination
 //
 
-import AVFoundation
 import Combine
 import SwiftUI
-import UIKit
-import Vision
 
-/// ViewModel managing game state and collision detection logic
-class GameViewModel: ObservableObject {
-  // Hand detection and camera services
-  @Published var handDetectionService = HandDetectionService()
-  @Published var cameraManager: CameraManager
+/// Clean ViewModel that coordinates between services and manages game state
+final class GameViewModel: GameStateManaging {
 
-  // Game state
-  @Published var isShapeVisible = false
-  @Published var viewSize: CGSize = .zero
+  // MARK: - Published Properties
   @Published var score = 0
+  @Published var bullets = GameConfiguration.Game.initialBullets
+  @Published var isGameOver = false
   @Published var gameStarted = false
-  @Published var isGameOver: Bool = false
-  
-  // Random spawn properties
-  @Published var shapePosition: CGPoint = .zero
-  @Published var currentShapeColor: Color = .blue
+  @Published var viewSize: CGSize = .zero
 
-  // Game configuration
-  let shapeSize: CGFloat = 100
-  let shapeColor = Color.blue.opacity(0.7)
-  
-  // Spawn timing configuration
-  private let minSpawnDelay: Double = 1.0
-  private let maxSpawnDelay: Double = 4.0
-  private let shapeVisibleDuration: Double = 3.0
+  // MARK: - Services
+  let handDetectionService = HandDetectionService()
+  let cameraManager: CameraManager
+  let scoreManager = ScoreManager()
 
-  // Bullet system state for SpriteKit
-  @Published var bullets: Int = 10
-  let maxBullets = 100
-
+  // MARK: - Private Properties
   private var cancellables = Set<AnyCancellable>()
-  private var spawnTimer: Timer?
 
+  // MARK: - Initialization
   init() {
-    let handService = HandDetectionService()
-    self.handDetectionService = handService
-    self.cameraManager = CameraManager(handDetectionService: handService)
-  }
-  
-  /// Start the game session
-  func startGame() {
-    gameStarted = true
-    score = 0
-    cameraManager.startSession()
-    startRandomSpawning()
+    self.cameraManager = CameraManager(handDetectionService: handDetectionService)
+    setupObservers()
   }
 
-  /// Stop the game session
+  // MARK: - GameStateManaging Implementation
+
+  func startGame() {
+    guard !gameStarted else { return }
+
+    gameStarted = true
+    isGameOver = false
+    scoreManager.resetScore()
+    cameraManager.startSession()
+  }
+
   func stopGame() {
     gameStarted = false
     cameraManager.stopSession()
-    stopRandomSpawning()
   }
 
-  /// Update view size when geometry changes
-  func updateViewSize(_ size: CGSize) {
-    viewSize = size
-  }
-  
-  /// Start random spawning timer
-  private func startRandomSpawning() {
-    // Schedule first spawn
-    scheduleNextSpawn()
-  }
-  
-  /// Stop random spawning timer
-  private func stopRandomSpawning() {
-    spawnTimer?.invalidate()
-    spawnTimer = nil
-    isShapeVisible = false
-  }
-  
-  /// Schedule the next random spawn
-  private func scheduleNextSpawn() {
-    let randomDelay = Double.random(in: minSpawnDelay...maxSpawnDelay)
-    
-    spawnTimer?.invalidate()
-    spawnTimer = Timer.scheduledTimer(withTimeInterval: randomDelay, repeats: false) { [weak self] _ in
-      self?.spawnShape()
-    }
-  }
-  
-  /// Spawn shape at random position with random color
-  private func spawnShape() {
-    guard gameStarted && viewSize != .zero else { return }
-    
-    // Generate random position (ensuring shape stays within bounds)
-    let safeMargin = shapeSize / 2 + 20
-    let randomX = Double.random(in: safeMargin...(viewSize.width - safeMargin))
-    let randomY = Double.random(in: safeMargin...(viewSize.height - safeMargin))
-    
-    shapePosition = CGPoint(x: randomX, y: randomY)
-    
-    // Generate random color
-    let colors: [Color] = [.blue, .red, .green, .orange, .purple, .pink]
-    currentShapeColor = colors.randomElement()?.opacity(0.7) ?? .blue.opacity(0.7)
-    
-    // Show shape with animation
-    withAnimation(.easeIn(duration: 0.3)) {
-      isShapeVisible = true
-    }
-    
-    // Hide shape after duration
-    DispatchQueue.main.asyncAfter(deadline: .now() + shapeVisibleDuration) {
-      if self.isShapeVisible {
-        self.hideShape()
-      }
-    }
-  }
-  
-  /// Hide shape and schedule next spawn
-  private func hideShape() {
-    withAnimation(.easeOut(duration: 0.3)) {
-      isShapeVisible = false
-    }
-    
-    // Schedule next spawn
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      self.scheduleNextSpawn()
-    }
-  }
-
-  /// Handle collision detected event
-  private func handleCollision() {
-    // Hide the shape when collision is detected
-    withAnimation(.easeOut(duration: 0.3)) {
-      isShapeVisible = false
-    }
-
-    // Increment score
-    score += 1
-
-    // Schedule next spawn after short delay
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      self.scheduleNextSpawn()
-    }
-
-    // Add haptic feedback
-    let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-    impactFeedback.impactOccurred()
-  }
-
-  /// Called by GameScene when bullets reach zero
   func gameOver(finalScore: Int? = nil) {
     isGameOver = true
     gameStarted = false
     stopGame()
-    if let score = finalScore {
-      self.score = score
+
+    if let finalScore = finalScore {
+      score = finalScore
     }
   }
 
-  /// Replay the game (reset state)
   func replayGame() {
-    score = 0
-    bullets = maxBullets
+    stopGame()
+
+    // Reset state
+    scoreManager.resetScore()
     isGameOver = false
-    gameStarted = false
+
+    // Start new game
     startGame()
+  }
+
+  // MARK: - View Updates
+
+  func updateViewSize(_ size: CGSize) {
+    viewSize = size
+  }
+
+  // MARK: - Private Helpers
+
+  private func setupObservers() {
+    // Observe score changes
+    scoreManager.$currentScore
+      .receive(on: DispatchQueue.main)
+      .assign(to: \.score, on: self)
+      .store(in: &cancellables)
+
+    // Observe bullet changes
+    scoreManager.$currentBullets
+      .receive(on: DispatchQueue.main)
+      .assign(to: \.bullets, on: self)
+      .store(in: &cancellables)
+
+    // Monitor for game over when bullets reach zero
+    scoreManager.$currentBullets
+      .filter { $0 <= 0 }
+      .sink { [weak self] _ in
+        guard let self = self, self.gameStarted else { return }
+        self.gameOver(finalScore: self.score)
+      }
+      .store(in: &cancellables)
   }
 }

@@ -8,18 +8,20 @@
 import SpriteKit
 import SwiftUI
 
-/// Main game view that orchestrates all components
+/// Clean main game view that orchestrates all components
 struct GameView: View {
   @StateObject private var viewModel = GameViewModel()
-  @StateObject private var handDetectionService = HandDetectionService()
-  
+
   var body: some View {
     GeometryReader { geometry in
       ZStack {
         // Camera background
         CameraBackgroundView(viewModel: viewModel)
+
+        // Game scene
         SpriteView(viewModel: viewModel)
-        
+
+        // Game over overlay
         if viewModel.isGameOver {
           GameOverOverlayView(score: viewModel.score) {
             viewModel.replayGame()
@@ -33,7 +35,7 @@ struct GameView: View {
       .onDisappear {
         viewModel.stopGame()
       }
-      .onChange(of: geometry.size) { oldSize, newSize in
+      .onChange(of: geometry.size) { _, newSize in
         viewModel.updateViewSize(newSize)
       }
     }
@@ -44,7 +46,7 @@ struct GameView: View {
 // MARK: - Camera Background View
 struct CameraBackgroundView: View {
   @ObservedObject var viewModel: GameViewModel
-  
+
   var body: some View {
     Group {
       if viewModel.cameraManager.permissionGranted {
@@ -63,12 +65,12 @@ struct CameraPermissionView: View {
       Image(systemName: "camera.fill")
         .font(.system(size: 60))
         .foregroundColor(.white.opacity(0.6))
-      
+
       Text("Camera Permission Required")
         .font(.title2)
         .fontWeight(.semibold)
         .foregroundColor(.white)
-      
+
       Text("Please enable camera access in System Preferences to play the game")
         .font(.body)
         .foregroundColor(.gray)
