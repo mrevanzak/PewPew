@@ -6,13 +6,38 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXCopyFilesBuildPhase section */
+		C56032AD2E090654008796FC /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Font;
+			dstSubfolderSpec = 7;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		C5A398F42DEFE975003932C7 /* pewpew.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = pewpew.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C56032A52E0904DC008796FC /* Exceptions for "pewpew" folder in "pewpew" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C5A398F32DEFE975003932C7 /* pewpew */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C5A398F62DEFE975003932C7 /* pewpew */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C56032A52E0904DC008796FC /* Exceptions for "pewpew" folder in "pewpew" target */,
+			);
 			path = pewpew;
 			sourceTree = "<group>";
 		};
@@ -55,6 +80,7 @@
 				C5A398F02DEFE975003932C7 /* Sources */,
 				C5A398F12DEFE975003932C7 /* Frameworks */,
 				C5A398F22DEFE975003932C7 /* Resources */,
+				C56032AD2E090654008796FC /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -249,12 +275,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = pewpew/pewpew.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5U7DSB32K6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = pewpew/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PewPew;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.action-games";
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to detect hand gestures and enable collision detection with virtual objects";
@@ -276,6 +304,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.pewpew.pewpew;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -293,12 +322,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = pewpew/pewpew.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5U7DSB32K6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = pewpew/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PewPew;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.action-games";
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to detect hand gestures and enable collision detection with virtual objects";
@@ -320,6 +351,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.pewpew.pewpew;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

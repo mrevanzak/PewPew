@@ -4,7 +4,7 @@ import SwiftUI
 struct PewPewApp: App {
   var body: some Scene {
     WindowGroup {
-      GameView()
+      MenuView()
     }
   }
 }
