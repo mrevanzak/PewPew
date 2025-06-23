@@ -211,6 +211,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     let baseSize: CGFloat = CGFloat.random(in: 50...70)  // Bigger than before
     let isBulletTarget = (viewModel?.score ?? 0) > 0 && Double.random(in: 0...1) < 0.2
     let circle: SKSpriteNode
+    var isAlien = false
     if isBulletTarget {
       // Square for bullet target
       circle = SKSpriteNode(color: .cyan, size: CGSize(width: baseSize, height: baseSize))
@@ -228,6 +229,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
       circle.name = "moving_circle"
       // Use texture-based hitbox for alien
       circle.physicsBody = SKPhysicsBody(texture: texture, size: circle.size)
+      isAlien = true
     }
     circle.physicsBody?.categoryBitMask = PhysicsCategory.target
     circle.physicsBody?.contactTestBitMask = PhysicsCategory.player | (0x1 << 2)
@@ -239,14 +241,14 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     var endPosition = CGPoint.zero
     let radius = max(circle.size.width, circle.size.height) / 2
     if isBulletTarget {
-      let x = CGFloat.random(in: radius...(size.width - radius))
-      startPosition = CGPoint(x: x, y: size.height + radius)
+      let x = CGFloat.random(in: radius...(size.width-radius))
+      startPosition = CGPoint(x: x, y: (size.height * 0.85) + radius)
       endPosition = CGPoint(x: x, y: -radius)
     } else {
       let edges = ["left", "right"]
       let startEdge = edges.randomElement() ?? "left"
       let minY = radius + size.height * 0.2
-      let maxY = size.height - radius
+      let maxY = size.height * 0.9 - radius
       switch startEdge {
       case "left":
         let y = CGFloat.random(in: minY...maxY)
@@ -267,6 +269,16 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     let duration = distance / speed
     let moveAction = SKAction.move(to: endPosition, duration: duration)
     let removeAction = SKAction.removeFromParent()
+    // Add wiggle for alien (ufo)
+    if isAlien {
+      let wiggle = SKAction.sequence([
+        SKAction.rotate(byAngle: 0.08, duration: 0.18),
+        SKAction.rotate(byAngle: -0.16, duration: 0.36),
+        SKAction.rotate(byAngle: 0.08, duration: 0.18)
+      ])
+      let wiggleForever = SKAction.repeatForever(wiggle)
+      circle.run(wiggleForever)
+    }
     circle.run(SKAction.sequence([moveAction, removeAction]))
   }
 
@@ -351,11 +363,40 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
 
   func handleCorrectHit(target: SKNode) {
+    // Only apply effect if this is an alien (not bullet target)
+    if let sprite = target as? SKSpriteNode, sprite.name == "moving_circle" {
+        // Impact effect
+        createImpactEffect(at: sprite.position)
+        // Change texture to alienCrash
+        let crashTexture = SKTexture(imageNamed: "alienCrash")
+        let setCrash = SKAction.run { sprite.texture = crashTexture }
+        let fadeOut = SKAction.fadeOut(withDuration: 0.4)
+        let remove = SKAction.removeFromParent()
+        let crashSequence = SKAction.sequence([setCrash, fadeOut, remove])
+        sprite.run(crashSequence)
+    } else {
+        target.removeFromParent()
+    }
     viewModel?.score += 10
     scoreLabel.text = "Score: \(viewModel?.score ?? 0)"
     createEffect(at: target.position, text: "+10", color: .green)
-    target.removeFromParent()
     animateScoreLabel()
+  }
+
+  // Impact effect for alien hit
+  private func createImpactEffect(at position: CGPoint) {
+    let impact = SKShapeNode(circleOfRadius: 32)
+    impact.position = position
+    impact.strokeColor = .red
+    impact.lineWidth = 4
+    impact.fillColor = UIColor.red.withAlphaComponent(0.3)
+    impact.zPosition = 999
+    addChild(impact)
+    let scaleUp = SKAction.scale(to: 1.8, duration: 0.18)
+    let fadeOut = SKAction.fadeOut(withDuration: 0.18)
+    let remove = SKAction.removeFromParent()
+    let group = SKAction.group([scaleUp, fadeOut])
+    impact.run(SKAction.sequence([group, remove]))
   }
 
   func handleBulletHit(target: SKNode) {
