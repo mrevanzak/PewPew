@@ -48,21 +48,8 @@ class GameViewModel: ObservableObject {
     let handService = HandDetectionService()
     self.handDetectionService = handService
     self.cameraManager = CameraManager(handDetectionService: handService)
-
-    setupSubscriptions()
   }
-
-  /// Setup reactive subscriptions for collision detection
-  private func setupSubscriptions() {
-    // Monitor hand detection data changes for collision detection
-    handDetectionService.$handDetectionData
-      .receive(on: DispatchQueue.main)
-      .sink { [weak self] _ in
-        self?.checkCollision()
-      }
-      .store(in: &cancellables)
-  }
-
+  
   /// Start the game session
   func startGame() {
     gameStarted = true
@@ -143,31 +130,6 @@ class GameViewModel: ObservableObject {
     // Schedule next spawn
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
       self.scheduleNextSpawn()
-    }
-  }
-
-  /// Check for collision between finger points and shapes
-  private func checkCollision() {
-    guard isShapeVisible && handDetectionService.handDetectionData.isDetected && viewSize != .zero
-    else { return }
-
-    // Calculate shape frame using dynamic position
-    let shapeFrame = CGRect(
-      x: shapePosition.x - shapeSize / 2,
-      y: shapePosition.y - shapeSize / 2,
-      width: shapeSize,
-      height: shapeSize
-    )
-
-    // Use the improved collision detection from utilities
-    let collision = CollisionDetection.checkFingerCollision(
-      fingerPoints: handDetectionService.handDetectionData.fingerPointsPerHand,
-      shapeFrame: shapeFrame,
-      viewSize: viewSize
-    )
-
-    if collision.hasCollision {
-      handleCollision()
     }
   }
 
