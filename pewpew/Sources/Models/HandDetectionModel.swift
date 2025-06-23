@@ -10,7 +10,6 @@ import Foundation
 
 /// Model representing detected hand data
 struct HandDetectionData {
-  let boundingBoxes: [CGRect]
   let fingerPointsPerHand: [[CGPoint]]
   let leftFingerPoints: [CGPoint]
   let rightFingerPoints: [CGPoint]
@@ -20,9 +19,8 @@ struct HandDetectionData {
   let rightPalmPoint: CGPoint?
   let isDetected: Bool
   let confidence: Float
-  
+
   static let empty = HandDetectionData(
-    boundingBoxes: [],
     fingerPointsPerHand: [],
     leftFingerPoints: [],
     rightFingerPoints: [],
@@ -40,7 +38,7 @@ struct CollisionResult {
   let hasCollision: Bool
   let overlapPercentage: CGFloat
   let collisionPoint: CGPoint?
-  
+
   static let noCollision = CollisionResult(
     hasCollision: false,
     overlapPercentage: 0.0,
