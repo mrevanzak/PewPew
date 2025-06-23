@@ -10,31 +10,32 @@ import SpriteKit
 
 // MARK: - Custom SpriteKit Scene
 class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
-  private var circle1: SKShapeNode?
-  private var circle2: SKShapeNode?
+  // MARK: - Properties
+  private var circle1: SKSpriteNode?
+  private var circle2: SKSpriteNode?
 
   weak var viewModel: GameViewModel?
   var scoreLabel: SKLabelNode!
-  var isSpawning = false
   var bulletLabel: SKLabelNode!
+  var isSpawning = false
   let maxBullets = 100
 
-  // Track contact state for shoot gesture
+  // Gesture and hand tracking
   private var pendingShootTarget: SKNode?
   private var pendingHand: String? // "left" or "right"
   private var waitingForShootGesture = false
   private var lastHandWasClosed = false
-  var handDetectionService: HandDetectionService?
-
-  // Track last hand state for shoot gesture detection
   private var lastLeftHandClosed = false
   private var lastRightHandClosed = false
+  var handDetectionService: HandDetectionService?
 
+  // MARK: - Physics Categories
   struct PhysicsCategory {
     static let player: UInt32 = 0x1 << 0
     static let target: UInt32 = 0x1 << 1
   }
 
+  // MARK: - Lifecycle
   override func didMove(to view: SKView) {
     backgroundColor = .clear
     setupScene()
@@ -42,6 +43,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     startSpawning()
   }
 
+  // MARK: - Scene Setup
   private func setupScene() {
     physicsWorld.contactDelegate = self
     physicsWorld.gravity = CGVector(dx: 0, dy: 0)
@@ -49,13 +51,20 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
 
   func setupUI() {
+    setupScoreLabel()
+    setupBulletLabel()
+  }
+
+  private func setupScoreLabel() {
     scoreLabel = SKLabelNode(fontNamed: "Arial-Bold")
     scoreLabel.text = "Score: \(viewModel?.score ?? 0)"
     scoreLabel.fontSize = 24
     scoreLabel.fontColor = .white
     scoreLabel.position = CGPoint(x: 100, y: size.height - 50)
     addChild(scoreLabel)
-    
+  }
+
+  private func setupBulletLabel() {
     bulletLabel = SKLabelNode(fontNamed: "Arial-Bold")
     bulletLabel.text = "Bullets: \(viewModel?.bullets ?? 0)"
     bulletLabel.fontSize = 24
@@ -65,37 +74,40 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
 
   private func createHandControlledCircles() {
-    // Circle 1 - Blue (for first wrist point)
-    circle1 = SKShapeNode(circleOfRadius: 25)
-    circle1?.fillColor = .systemBlue
-    circle1?.strokeColor = .white
-    circle1?.lineWidth = 3
-    circle1?.name = "circle1"
-    circle1?.position = CGPoint(x: frame.width * 0.3, y: frame.height * 0.3)
-    circle1?.physicsBody = SKPhysicsBody(circleOfRadius: 25)
-    circle1?.physicsBody?.categoryBitMask = PhysicsCategory.player
-    circle1?.physicsBody?.contactTestBitMask = PhysicsCategory.target
-    circle1?.physicsBody?.collisionBitMask = 0
-    circle1?.physicsBody?.isDynamic = true
-    if let circle1 = circle1 {
-      addChild(circle1)
-    }
-    
-    // Circle 2 - Red (for second wrist point)
-    circle2 = SKShapeNode(circleOfRadius: 30)
-    circle2?.fillColor = .systemRed
-    circle2?.strokeColor = .white
-    circle2?.lineWidth = 3
-    circle2?.name = "circle2"
-    circle2?.position = CGPoint(x: frame.width * 0.7, y: frame.height * 0.7)
-    circle2?.physicsBody = SKPhysicsBody(circleOfRadius: 25)
-    circle2?.physicsBody?.categoryBitMask = PhysicsCategory.player
-    circle2?.physicsBody?.contactTestBitMask = PhysicsCategory.target
-    circle2?.physicsBody?.collisionBitMask = 0
-    circle1?.physicsBody?.isDynamic = true
-    if let circle2 = circle2 {
-      addChild(circle2)
-    }
+    createCircle1()
+    createCircle2()
+  }
+
+  private func createCircle1() {
+    let texture = SKTexture(imageNamed: "shootMark")
+    let size = CGSize(width: 70, height: 70 * (texture.size().height / texture.size().width))
+    let sprite = SKSpriteNode(texture: texture, color: .clear, size: size)
+    sprite.name = "circle1"
+    sprite.position = CGPoint(x: frame.width * 0.3, y: frame.height * 0.3)
+    sprite.zPosition = 1000 // Always on top
+    sprite.physicsBody = SKPhysicsBody(texture: texture, size: size)
+    sprite.physicsBody?.categoryBitMask = PhysicsCategory.player
+    sprite.physicsBody?.contactTestBitMask = PhysicsCategory.target
+    sprite.physicsBody?.collisionBitMask = 0
+    sprite.physicsBody?.isDynamic = true
+    circle1 = sprite
+    addChild(sprite)
+  }
+
+  private func createCircle2() {
+    let texture = SKTexture(imageNamed: "shootMark")
+    let size = CGSize(width: 70, height: 70 * (texture.size().height / texture.size().width))
+    let sprite = SKSpriteNode(texture: texture, color: .clear, size: size)
+    sprite.name = "circle2"
+    sprite.position = CGPoint(x: frame.width * 0.7, y: frame.height * 0.7)
+    sprite.zPosition = 1000 // Always on top
+    sprite.physicsBody = SKPhysicsBody(texture: texture, size: size)
+    sprite.physicsBody?.categoryBitMask = PhysicsCategory.player
+    sprite.physicsBody?.contactTestBitMask = PhysicsCategory.target
+    sprite.physicsBody?.collisionBitMask = 0
+    sprite.physicsBody?.isDynamic = true
+    circle2 = sprite
+    addChild(sprite)
   }
   
   // Function to update circle positions based on hand detection data
@@ -133,15 +145,16 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
         let moveAction = SKAction.move(to: leftScenePoint, duration: 0.1)
         moveAction.timingMode = .easeOut
         circle1.run(moveAction)
+        circle1.zPosition = 1000 // Keep on top
       }
     }
-    
     if let rightPalmPoint = handData.rightPalmPoint {
       let rightScenePoint = convertToSceneCoordinates(rightPalmPoint)
       if let circle2 = circle2 {
         let moveAction = SKAction.move(to: rightScenePoint, duration: 0.1)
         moveAction.timingMode = .easeOut
         circle2.run(moveAction)
+        circle2.zPosition = 1000 // Keep on top
       }
     }
     
@@ -184,67 +197,61 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
 
   func spawnMovingCircle() {
-    let radius = CGFloat.random(in: 25...35)
-    // Make bullet target spawn more rarely (20% chance if score > 0)
+    let baseSize: CGFloat = CGFloat.random(in: 50...70) // Bigger than before
     let isBulletTarget = (viewModel?.score ?? 0) > 0 && Double.random(in: 0...1) < 0.2
-    let circle: SKShapeNode
+    let circle: SKSpriteNode
     if isBulletTarget {
       // Square for bullet target
-      circle = SKShapeNode(rectOf: CGSize(width: radius * 2, height: radius * 2), cornerRadius: 6)
-      circle.fillColor = .cyan
+      circle = SKSpriteNode(color: .cyan, size: CGSize(width: baseSize, height: baseSize))
       circle.name = "bullet_target"
+      // Use rectangle hitbox for bullet target
+      circle.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: baseSize, height: baseSize))
     } else {
-      // Circle for normal target
-      circle = SKShapeNode(circleOfRadius: radius)
-      let colors: [UIColor] = [.red, .green, .yellow, .orange, .purple, .magenta, .brown]
-      circle.fillColor = colors.randomElement() ?? .red
+      // Alien image for normal target
+      let texture = SKTexture(imageNamed: "alien")
+      let aspectRatio = texture.size().width / texture.size().height
+      let height = baseSize
+      let width = baseSize * aspectRatio
+      circle = SKSpriteNode(texture: texture, color: .clear, size: CGSize(width: width, height: height))
       circle.name = "moving_circle"
-    }
-    circle.strokeColor = .white
-    circle.lineWidth = 2
-    // Random start and end positions on opposite edges
-    let edges: [String]
-    if isBulletTarget {
-      // Always spawn bullet target from top to bottom
-      edges = ["top"]
-    } else {
-      edges = ["left", "right", "top", "bottom"]
-    }
-    let startEdge = edges.randomElement() ?? "left"
-    var startPosition = CGPoint.zero
-    var endPosition = CGPoint.zero
-    switch startEdge {
-    case "left":
-      startPosition = CGPoint(x: -radius, y: CGFloat.random(in: radius...(size.height-radius)))
-      endPosition = CGPoint(x: size.width+radius, y: CGFloat.random(in: radius...(size.height-radius)))
-    case "right":
-      startPosition = CGPoint(x: size.width+radius, y: CGFloat.random(in: radius...(size.height-radius)))
-      endPosition = CGPoint(x: -radius, y: CGFloat.random(in: radius...(size.height-radius)))
-    case "top":
-      startPosition = CGPoint(x: CGFloat.random(in: radius...(size.width-radius)), y: size.height+radius)
-      endPosition = CGPoint(x: CGFloat.random(in: radius...(size.width-radius)), y: -radius)
-    case "bottom":
-      startPosition = CGPoint(x: CGFloat.random(in: radius...(size.width-radius)), y: -radius)
-      endPosition = CGPoint(x: CGFloat.random(in: radius...(size.width-radius)), y: size.height+radius)
-    default:
-      break
-    }
-    circle.position = startPosition
-    // Set physics body shape
-    if isBulletTarget {
-      circle.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: radius * 2, height: radius * 2))
-    } else {
-      circle.physicsBody = SKPhysicsBody(circleOfRadius: radius)
+      // Use texture-based hitbox for alien
+      circle.physicsBody = SKPhysicsBody(texture: texture, size: circle.size)
     }
     circle.physicsBody?.categoryBitMask = PhysicsCategory.target
-    circle.physicsBody?.contactTestBitMask = PhysicsCategory.player | (0x1 << 2) // player or projectile
+    circle.physicsBody?.contactTestBitMask = PhysicsCategory.player | (0x1 << 2)
     circle.physicsBody?.collisionBitMask = 0
     circle.physicsBody?.isDynamic = true
     circle.physicsBody?.affectedByGravity = false
+    // Set start and end positions
+    var startPosition = CGPoint.zero
+    var endPosition = CGPoint.zero
+    let radius = max(circle.size.width, circle.size.height) / 2
+    if isBulletTarget {
+      let x = CGFloat.random(in: radius...(size.width-radius))
+      startPosition = CGPoint(x: x, y: size.height+radius)
+      endPosition = CGPoint(x: x, y: -radius)
+    } else {
+      let edges = ["left", "right"]
+      let startEdge = edges.randomElement() ?? "left"
+      let minY = radius + size.height * 0.2
+      let maxY = size.height - radius
+      switch startEdge {
+      case "left":
+        let y = CGFloat.random(in: minY...maxY)
+        startPosition = CGPoint(x: -radius, y: y)
+        endPosition = CGPoint(x: size.width+radius, y: y)
+      case "right":
+        let y = CGFloat.random(in: minY...maxY)
+        startPosition = CGPoint(x: size.width+radius, y: y)
+        endPosition = CGPoint(x: -radius, y: y)
+      default:
+        break
+      }
+    }
+    circle.position = startPosition
     addChild(circle)
-    // Move to the end position
     let distance = hypot(endPosition.x - startPosition.x, endPosition.y - startPosition.y)
-    let speed: CGFloat = CGFloat.random(in: 100...250) // points per second
+    let speed: CGFloat = CGFloat.random(in: 100...250)
     let duration = distance / speed
     let moveAction = SKAction.move(to: endPosition, duration: duration)
     let removeAction = SKAction.removeFromParent()
@@ -306,10 +313,12 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
 
   func checkForShootGesture() {
-    guard waitingForShootGesture, let target = pendingShootTarget, let hand = pendingHand, let service = handDetectionService else { return }
-    let handOpen = service.isHandOpen(hand: hand)
+    // Remove scoring logic from shoot gesture
+    // Only allow projectile to score
+    guard waitingForShootGesture, let _ = pendingShootTarget, let _ = pendingHand, let _ = handDetectionService else { return }
+    let handOpen = false // Disable scoring on gesture
     if handOpen && lastHandWasClosed {
-      handleCorrectHit(target: target)
+      // No-op: do not score here
       pendingShootTarget = nil
       pendingHand = nil
       waitingForShootGesture = false
