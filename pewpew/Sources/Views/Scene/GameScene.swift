@@ -5,14 +5,14 @@
 //  Created by Gilang Banyu Biru Erassunu on 16/06/25.
 //
 
-import SwiftUI
 import SpriteKit
+import SwiftUI
 
 // MARK: - Custom SpriteKit Scene
 class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   // MARK: - Properties
-  private var circle1: SKSpriteNode?
-  private var circle2: SKSpriteNode?
+  private var leftHandCircle: SKSpriteNode?
+  private var rightHandCircle: SKSpriteNode?
 
   weak var viewModel: GameViewModel?
   var scoreLabel: SKLabelNode!
@@ -22,7 +22,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
 
   // Gesture and hand tracking
   private var pendingShootTarget: SKNode?
-  private var pendingHand: String? // "left" or "right"
+  private var pendingHand: String?  // "left" or "right"
   private var waitingForShootGesture = false
   private var lastHandWasClosed = false
   private var lastLeftHandClosed = false
@@ -47,7 +47,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   private func setupScene() {
     physicsWorld.contactDelegate = self
     physicsWorld.gravity = CGVector(dx: 0, dy: 0)
-    createHandControlledCircles()
+    // Dynamic circle creation will be handled in updateCirclesWithHandData
   }
 
   func setupUI() {
@@ -73,47 +73,84 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     addChild(bulletLabel)
   }
 
-  private func createHandControlledCircles() {
-    createCircle1()
-    createCircle2()
-  }
-
-  private func createCircle1() {
+  // MARK: - Dynamic Circle Management
+  private func createHandCircle(for hand: String, at position: CGPoint) -> SKSpriteNode {
     let texture = SKTexture(imageNamed: "shootMark")
     let size = CGSize(width: 70, height: 70 * (texture.size().height / texture.size().width))
     let sprite = SKSpriteNode(texture: texture, color: .clear, size: size)
-    sprite.name = "circle1"
-    sprite.position = CGPoint(x: frame.width * 0.3, y: frame.height * 0.3)
-    sprite.zPosition = 1000 // Always on top
+    sprite.name = "handCircle_\(hand)"
+    sprite.position = position  // Set position directly to hand position
+    sprite.zPosition = 1000  // Always on top
     sprite.physicsBody = SKPhysicsBody(texture: texture, size: size)
     sprite.physicsBody?.categoryBitMask = PhysicsCategory.player
     sprite.physicsBody?.contactTestBitMask = PhysicsCategory.target
     sprite.physicsBody?.collisionBitMask = 0
     sprite.physicsBody?.isDynamic = true
-    circle1 = sprite
-    addChild(sprite)
+    return sprite
   }
 
-  private func createCircle2() {
-    let texture = SKTexture(imageNamed: "shootMark")
-    let size = CGSize(width: 70, height: 70 * (texture.size().height / texture.size().width))
-    let sprite = SKSpriteNode(texture: texture, color: .clear, size: size)
-    sprite.name = "circle2"
-    sprite.position = CGPoint(x: frame.width * 0.7, y: frame.height * 0.7)
-    sprite.zPosition = 1000 // Always on top
-    sprite.physicsBody = SKPhysicsBody(texture: texture, size: size)
-    sprite.physicsBody?.categoryBitMask = PhysicsCategory.player
-    sprite.physicsBody?.contactTestBitMask = PhysicsCategory.target
-    sprite.physicsBody?.collisionBitMask = 0
-    sprite.physicsBody?.isDynamic = true
-    circle2 = sprite
-    addChild(sprite)
+  private func updateCirclesForHands(_ handData: HandDetectionData) {
+    // Handle left hand circle
+    if let leftPalm = handData.leftPalmPoint {
+      let leftScenePoint = convertToSceneCoordinates(leftPalm)
+
+      // Create left circle if it doesn't exist - spawn instantly at hand position
+      if leftHandCircle == nil {
+        leftHandCircle = createHandCircle(for: "left", at: leftScenePoint)
+        addChild(leftHandCircle!)
+      } else {
+        // Update existing circle position with smooth animation
+        let moveAction = SKAction.move(to: leftScenePoint, duration: 0.1)
+        moveAction.timingMode = .easeOut
+        leftHandCircle!.run(moveAction)
+      }
+
+      leftHandCircle!.zPosition = 1000
+      leftHandCircle!.alpha = 1.0
+    } else {
+      // Remove left circle if hand not detected
+      leftHandCircle?.removeFromParent()
+      leftHandCircle = nil
+    }
+
+    // Handle right hand circle
+    if let rightPalm = handData.rightPalmPoint {
+      let rightScenePoint = convertToSceneCoordinates(rightPalm)
+
+      // Create right circle if it doesn't exist - spawn instantly at hand position
+      if rightHandCircle == nil {
+        rightHandCircle = createHandCircle(for: "right", at: rightScenePoint)
+        addChild(rightHandCircle!)
+      } else {
+        // Update existing circle position with smooth animation
+        let moveAction = SKAction.move(to: rightScenePoint, duration: 0.1)
+        moveAction.timingMode = .easeOut
+        rightHandCircle!.run(moveAction)
+      }
+
+      rightHandCircle!.zPosition = 1000
+      rightHandCircle!.alpha = 1.0
+    } else {
+      // Remove right circle if hand not detected
+      rightHandCircle?.removeFromParent()
+      rightHandCircle = nil
+    }
+
+    // If no hands detected at all, ensure both circles are removed
+    if !handData.isDetected {
+      leftHandCircle?.removeFromParent()
+      leftHandCircle = nil
+      rightHandCircle?.removeFromParent()
+      rightHandCircle = nil
+    }
   }
-  
+
   // Function to update circle positions based on hand detection data
   func updateCirclesWithHandData(_ handData: HandDetectionData) {
     if let service = handDetectionService {
-      print("Hand states: \(service.getHandStates()) | Any open: \(service.isAnyHandOpen()) | Any closed: \(service.isAnyHandClosed())")
+      print(
+        "Hand states: \(service.getHandStates()) | Any open: \(service.isAnyHandOpen()) | Any closed: \(service.isAnyHandClosed())"
+      )
       // Detect shoot gesture for left hand
       let leftOpen = service.isHandOpen(hand: "left")
       let leftClosed = service.isHandClosed(hand: "left")
@@ -129,60 +166,34 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
       }
       lastRightHandClosed = rightClosed
     }
-    
-    guard handData.isDetected else {
-      circle1?.alpha = 0.3
-      circle2?.alpha = 0.3
-      return
-    }
-    
-    circle1?.alpha = 1.0
-    circle2?.alpha = 1.0
-    
-    if let leftPalmPoint = handData.leftPalmPoint {
-      let leftScenePoint = convertToSceneCoordinates(leftPalmPoint)
-      if let circle1 = circle1 {
-        let moveAction = SKAction.move(to: leftScenePoint, duration: 0.1)
-        moveAction.timingMode = .easeOut
-        circle1.run(moveAction)
-        circle1.zPosition = 1000 // Keep on top
-      }
-    }
-    if let rightPalmPoint = handData.rightPalmPoint {
-      let rightScenePoint = convertToSceneCoordinates(rightPalmPoint)
-      if let circle2 = circle2 {
-        let moveAction = SKAction.move(to: rightScenePoint, duration: 0.1)
-        moveAction.timingMode = .easeOut
-        circle2.run(moveAction)
-        circle2.zPosition = 1000 // Keep on top
-      }
-    }
-    
-    // If only one hand is detected, hide the second circle
-    if handData.fingerPointsPerHand.count == 1 {
-      circle2?.alpha = 0.3
-    }
-    
+
+    // Get detected palm points
+    let palmPoints = [handData.leftPalmPoint, handData.rightPalmPoint].compactMap { $0 }
+    let detectedHandCount = palmPoints.count
+
+    // Update circle count based on detected hands
+    updateCirclesForHands(handData)
+
     // After updating positions, check for shoot gesture if needed
     checkForShootGesture()
   }
-  
+
   // Convert normalized coordinates (0-1) to scene coordinates
   private func convertToSceneCoordinates(_ normalizedPoint: CGPoint) -> CGPoint {
     // Assuming the wrist points are normalized (0-1) coordinates
     // Flip Y coordinate since Vision framework uses bottom-left origin
     // while SpriteKit uses bottom-left origin (they should match)
     let x = (1.0 - normalizedPoint.x) * frame.width
-    let y = normalizedPoint.y * frame.height // Flip Y if needed
-    
+    let y = normalizedPoint.y * frame.height  // Flip Y if needed
+
     // Clamp to screen bounds with margin
     let margin: CGFloat = 30
     let clampedX = max(margin, min(frame.width - margin, x))
     let clampedY = max(margin, min(frame.height - margin, y))
-    
+
     return CGPoint(x: clampedX, y: clampedY)
   }
-  
+
   //MARK: - Spawning Logic
   func startSpawning() {
     guard !isSpawning else { return }
@@ -197,7 +208,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
 
   func spawnMovingCircle() {
-    let baseSize: CGFloat = CGFloat.random(in: 50...70) // Bigger than before
+    let baseSize: CGFloat = CGFloat.random(in: 50...70)  // Bigger than before
     let isBulletTarget = (viewModel?.score ?? 0) > 0 && Double.random(in: 0...1) < 0.2
     let circle: SKSpriteNode
     if isBulletTarget {
@@ -212,7 +223,8 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
       let aspectRatio = texture.size().width / texture.size().height
       let height = baseSize
       let width = baseSize * aspectRatio
-      circle = SKSpriteNode(texture: texture, color: .clear, size: CGSize(width: width, height: height))
+      circle = SKSpriteNode(
+        texture: texture, color: .clear, size: CGSize(width: width, height: height))
       circle.name = "moving_circle"
       // Use texture-based hitbox for alien
       circle.physicsBody = SKPhysicsBody(texture: texture, size: circle.size)
@@ -227,8 +239,8 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     var endPosition = CGPoint.zero
     let radius = max(circle.size.width, circle.size.height) / 2
     if isBulletTarget {
-      let x = CGFloat.random(in: radius...(size.width-radius))
-      startPosition = CGPoint(x: x, y: size.height+radius)
+      let x = CGFloat.random(in: radius...(size.width - radius))
+      startPosition = CGPoint(x: x, y: size.height + radius)
       endPosition = CGPoint(x: x, y: -radius)
     } else {
       let edges = ["left", "right"]
@@ -239,10 +251,10 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
       case "left":
         let y = CGFloat.random(in: minY...maxY)
         startPosition = CGPoint(x: -radius, y: y)
-        endPosition = CGPoint(x: size.width+radius, y: y)
+        endPosition = CGPoint(x: size.width + radius, y: y)
       case "right":
         let y = CGFloat.random(in: minY...maxY)
-        startPosition = CGPoint(x: size.width+radius, y: y)
+        startPosition = CGPoint(x: size.width + radius, y: y)
         endPosition = CGPoint(x: -radius, y: y)
       default:
         break
@@ -261,10 +273,15 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   // MARK: - Physics Contact
   func didBegin(_ contact: SKPhysicsContact) {
     let names = [contact.bodyA.node?.name, contact.bodyB.node?.name]
-    if names.contains("projectile") && (names.contains("moving_circle") || names.contains("bullet_target")) {
+    if names.contains("projectile")
+      && (names.contains("moving_circle") || names.contains("bullet_target"))
+    {
       // Find nodes
-      let projectile = contact.bodyA.node?.name == "projectile" ? contact.bodyA.node : contact.bodyB.node
-      let circle = contact.bodyA.node?.name == "moving_circle" || contact.bodyA.node?.name == "bullet_target" ? contact.bodyA.node : contact.bodyB.node
+      let projectile =
+        contact.bodyA.node?.name == "projectile" ? contact.bodyA.node : contact.bodyB.node
+      let circle =
+        contact.bodyA.node?.name == "moving_circle" || contact.bodyA.node?.name == "bullet_target"
+        ? contact.bodyA.node : contact.bodyB.node
       if let circle = circle, let projectile = projectile {
         if circle.name == "bullet_target" {
           handleBulletHit(target: circle)
@@ -287,6 +304,8 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
       let targetPos = target.position
       var minDist: CGFloat = .greatestFiniteMagnitude
       var closestHand: String? = nil
+
+      // Check left hand if available
       if let leftPalm = service.handDetectionData.leftPalmPoint {
         let leftScene = convertToSceneCoordinates(leftPalm)
         let dist = hypot(leftScene.x - targetPos.x, leftScene.y - targetPos.y)
@@ -295,6 +314,8 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
           closestHand = "left"
         }
       }
+
+      // Check right hand if available
       if let rightPalm = service.handDetectionData.rightPalmPoint {
         let rightScene = convertToSceneCoordinates(rightPalm)
         let dist = hypot(rightScene.x - targetPos.x, rightScene.y - targetPos.y)
@@ -303,6 +324,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
           closestHand = "right"
         }
       }
+
       if let hand = closestHand {
         pendingShootTarget = target
         pendingHand = hand
@@ -315,8 +337,10 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   func checkForShootGesture() {
     // Remove scoring logic from shoot gesture
     // Only allow projectile to score
-    guard waitingForShootGesture, let _ = pendingShootTarget, let _ = pendingHand, let _ = handDetectionService else { return }
-    let handOpen = false // Disable scoring on gesture
+    guard waitingForShootGesture, pendingShootTarget != nil, pendingHand != nil,
+      handDetectionService != nil
+    else { return }
+    let handOpen = false  // Disable scoring on gesture
     if handOpen && lastHandWasClosed {
       // No-op: do not score here
       pendingShootTarget = nil
@@ -353,14 +377,14 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
   }
 
   func animateScoreLabel() {
-    let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)  
+    let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)
     let scaleDown = SKAction.scale(to: 1.0, duration: 0.1)
     let scaleSequence = SKAction.sequence([scaleUp, scaleDown])
     scoreLabel.run(scaleSequence)
   }
-  
+
   var onGameOver: (() -> Void)?
-  
+
   func spawnProjectile(at targetPosition: CGPoint) {
     guard let vm = viewModel, vm.bullets > 0 else { return }
     vm.bullets -= 1
@@ -380,7 +404,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     projectile.position = start
     projectile.name = "projectile"
     projectile.physicsBody = SKPhysicsBody(circleOfRadius: 12)
-    projectile.physicsBody?.categoryBitMask = 0x1 << 2 // Projectile category
+    projectile.physicsBody?.categoryBitMask = 0x1 << 2  // Projectile category
     projectile.physicsBody?.contactTestBitMask = PhysicsCategory.target
     projectile.physicsBody?.collisionBitMask = 0
     projectile.physicsBody?.isDynamic = true
@@ -389,14 +413,14 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     // Calculate direction vector
     let dx = targetPosition.x - start.x
     let dy = targetPosition.y - start.y
-    let distance = sqrt(dx*dx + dy*dy)
-    let speed: CGFloat = 900.0 // points per second
+    let distance = sqrt(dx * dx + dy * dy)
+    let speed: CGFloat = 900.0  // points per second
     let duration = distance / speed
     let moveAction = SKAction.move(to: targetPosition, duration: duration)
     let removeAction = SKAction.removeFromParent()
     projectile.run(SKAction.sequence([moveAction, removeAction]))
   }
-  
+
   func createEffect(at position: CGPoint, text: String, color: UIColor) {
     let effectLabel = SKLabelNode(fontNamed: "Arial-Bold")
     effectLabel.text = text
@@ -405,35 +429,40 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
     effectLabel.position = position
     effectLabel.numberOfLines = 0
     addChild(effectLabel)
-    
+
     // Animate the effect
     let scaleUp = SKAction.scale(to: 1.5, duration: 0.2)
     let fadeOut = SKAction.fadeOut(withDuration: 0.8)
     let moveUp = SKAction.moveBy(x: 0, y: 50, duration: 1.0)
     let remove = SKAction.removeFromParent()
-    
+
     let effectSequence = SKAction.sequence([
       scaleUp,
       SKAction.group([fadeOut, moveUp]),
-      remove
+      remove,
     ])
-    
+
     effectLabel.run(effectSequence)
   }
-  
+
   override func didChangeSize(_ oldSize: CGSize) {
     super.didChangeSize(oldSize)
     // Place labels at the top left with padding
     let padding: CGFloat = 24
-    scoreLabel?.position = CGPoint(x: padding + scoreLabel.frame.width/2, y: size.height - padding)
-    bulletLabel?.position = CGPoint(x: padding + bulletLabel.frame.width/2, y: size.height - padding - scoreLabel.frame.height - 8)
+    scoreLabel?.position = CGPoint(
+      x: padding + scoreLabel.frame.width / 2, y: size.height - padding)
+    bulletLabel?.position = CGPoint(
+      x: padding + bulletLabel.frame.width / 2,
+      y: size.height - padding - scoreLabel.frame.height - 8)
   }
-  
+
   func resetScene() {
     // Remove all targets and projectiles
     removeAllChildren()
+    // Clear the hand circle references since children were removed
+    leftHandCircle = nil
+    rightHandCircle = nil
     setupUI()
-    createHandControlledCircles()
     isSpawning = false
     removeAllActions()
   }
@@ -442,7 +471,7 @@ class GameScene: SKScene, ObservableObject, SKPhysicsContactDelegate {
 // MARK: - SwiftUI Wrapper
 struct SpriteKitView: UIViewRepresentable {
   let scene: SKScene
-  
+
   func makeUIView(context: Context) -> SKView {
     let view = SKView()
     view.backgroundColor = .clear
@@ -450,7 +479,7 @@ struct SpriteKitView: UIViewRepresentable {
     view.presentScene(scene)
     return view
   }
-  
+
   func updateUIView(_ uiView: SKView, context: Context) {
     // Update if needed
   }
@@ -473,7 +502,7 @@ struct SpriteView: View {
     }
     _gameScene = State(initialValue: scene)
   }
-  
+
   var body: some View {
     GeometryReader { geometry in
       SpriteKitView(scene: gameScene)
@@ -500,4 +529,3 @@ struct SpriteView: View {
     }
   }
 }
-
