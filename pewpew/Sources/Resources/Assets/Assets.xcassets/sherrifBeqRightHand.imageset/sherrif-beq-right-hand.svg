@@ -1,0 +1,38 @@
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 170.79 303.88"><defs><style>
+      .st0 {
+        fill: #f4f4f0;
+        stroke-linecap: round;
+        stroke-width: 5.64px;
+      }
+      .st0, .st1, .st2, .st3, .st4, .st5 {
+        stroke: #231f20;
+      }
+      .st0, .st1, .st2, .st3, .st4, .st5, .st6 {
+        stroke-miterlimit: 10;
+      }
+      .st1 {
+        fill: #575b5c;
+      }
+      .st1, .st3, .st4 {
+        stroke-width: 1.22px;
+      }
+      .st2 {
+        fill: #868b8d;
+        stroke-width: 1.29px;
+      }
+      .st3 {
+        fill: #585d60;
+      }
+      .st4 {
+        fill: #404247;
+      }
+      .st5 {
+        fill: #9098a1;
+        stroke-width: 1.35px;
+      }
+      .st6 {
+        fill: #743b19;
+        stroke: #593010;
+        stroke-width: 6px;
+      }
+    </style></defs><g><rect class="st5" x="86.97" y="136.91" width="38.43" height="22.91" rx="4.8" ry="4.8" transform="translate(148.24 325.9) rotate(-157.74)"></rect><rect class="st3" x="81.11" y="152.93" width="24.18" height="54.3" rx="5.86" ry="5.86" transform="translate(111.23 382.05) rotate(-157.74)"></rect><rect class="st2" x="87.73" y="153.12" width="12.9" height="49.09" rx="4.07" ry="4.07" transform="translate(114.04 377.78) rotate(-157.74)"></rect><rect class="st1" x="120.1" y="21.19" width="24.18" height="127.31" rx="8.97" ry="8.97" transform="translate(222.38 213.43) rotate(-157.74)"></rect><rect class="st2" x="137.65" y="18.43" width="15.19" height="68.98" rx="5.24" ry="5.24" transform="translate(259.63 156.92) rotate(-157.74)"></rect><rect class="st3" x="149.71" y="17.92" width="6.64" height="31.99" rx="2.36" ry="2.36" transform="translate(281.81 123.28) rotate(-157.74)"></rect><rect class="st3" x="105.18" y="74.52" width="26.56" height="87.71" rx="7.8" ry="7.8" transform="translate(183.24 272.81) rotate(-157.74)"></rect><rect class="st4" x="91.7" y="100.94" width="46.14" height="52.9" rx="7.99" ry="7.99" transform="translate(172.72 288.76) rotate(-157.74)"></rect><rect class="st2" x="124.15" y="113.4" width="5.82" height="38.05" rx="1.71" ry="1.71" transform="translate(59.64 -38.26) rotate(22.26)"></rect><rect class="st2" x="99.57" y="103.34" width="5.82" height="38.05" rx="1.71" ry="1.71" transform="translate(53.99 -29.7) rotate(22.26)"></rect><rect class="st2" x="119.74" y="88.21" width="3.24" height="46.14" transform="translate(-27.6 181.44) rotate(-67.74)"></rect><rect class="st2" x="106.56" y="120.43" width="3.24" height="46.14" transform="translate(-65.61 189.25) rotate(-67.74)"></rect></g><g><path class="st0" d="M8.24,283.77s72.99,19.45,102.34-39.72c9.08-18.31,8.07-40.61-2.9-60.46-3.77-6.81-9.57-13.6-16.84-16.75-17.3-7.48-24.81,14.73-26.92,27.39,0,0-2.38,25.82-30.41,17.55"></path><path class="st6" d="M57.35,199.51c4.52,13.05,17.06,40.88,46.11,59.26,1.76,1.11,2.44,3.33,1.63,5.24-3.24,7.69-13.95,26.03-44.27,33.97-1.95.51-4-.43-4.89-2.24-6.28-12.74-29.8-61.81-29.02-80.52.07-1.6.99-3.03,2.44-3.72,4.25-2.01,14.07-7.04,21.08-13.71,2.62-2.49,5.73-1.7,6.91,1.72Z"></path></g></svg>

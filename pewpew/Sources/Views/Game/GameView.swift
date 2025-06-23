@@ -21,6 +21,12 @@ struct GameView: View {
         // Game scene
         SpriteView(viewModel: viewModel)
 
+        // Character at center bottom
+        CharacterView(
+          character: viewModel.selectedCharacter,
+          screenSize: geometry.size,
+        )
+
         // Game over overlay
         if viewModel.isGameOver {
           GameOverOverlayView(score: viewModel.score) {
@@ -82,6 +88,43 @@ struct CameraPermissionView: View {
   }
 }
 
+// MARK: - Character View
+struct CharacterView: View {
+  let character: Character
+  let screenSize: CGSize
+
+  var characterHeight: CGFloat {
+    screenSize.height * 0.15
+  }
+
+  var body: some View {
+    VStack {
+      Spacer()
+
+      // Character body
+      ZStack {
+        Image("\(character.imageName)LeftHand")
+          .resizable()
+          .aspectRatio(contentMode: .fit)
+          .frame(height: characterHeight * 0.6)
+          .offset(x: -characterHeight * 0.4, y: -characterHeight * 0.18)
+
+        Image("\(character.imageName)RightHand")
+          .resizable()
+          .aspectRatio(contentMode: .fit)
+          .frame(height: characterHeight * 0.6)
+          .offset(x: characterHeight * 0.4, y: -characterHeight * 0.18)
+
+        Image("\(character.imageName)Back")
+          .resizable()
+          .aspectRatio(contentMode: .fit)
+          .frame(height: characterHeight)  // Character size relative to screen
+          .padding(.bottom, 20)  // Small margin from bottom
+      }
+    }
+  }
+}
+
 // MARK: - Game Over Overlay View
 struct GameOverOverlayView: View {
   let score: Int
@@ -92,7 +135,7 @@ struct GameOverOverlayView: View {
         .resizable()
         .aspectRatio(contentMode: .fill)
         .ignoresSafeArea()
-      
+
       VStack(spacing: 24) {
         Text("Game Over")
           .font(.largeTitle)
@@ -118,4 +161,9 @@ struct GameOverOverlayView: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
   }
+}
+
+#Preview(traits: .landscapeRight) {
+  GameView()
+    .environmentObject(GameViewModel())
 }
