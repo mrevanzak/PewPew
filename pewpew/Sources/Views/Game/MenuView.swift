@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Main menu view with cowboy-themed design matching the provided image
 struct MenuView: View {
-  @State private var showGame = false
+  @State private var showCharacterSelection = false
 
   let screenWidth = UIScreen.main.bounds.size.width
   let screenHeight = UIScreen.main.bounds.size.height
@@ -21,7 +21,7 @@ struct MenuView: View {
 
           Button(action: {
             withAnimation(.easeInOut(duration: 0.1)) {
-              showGame = true
+              showCharacterSelection = true
             }
           }) {
             // START text overlay
@@ -34,11 +34,11 @@ struct MenuView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .padding(.bottom, 64)
-        .scaleEffect(showGame ? 0.95 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: showGame)
+        .scaleEffect(showCharacterSelection ? 0.95 : 1.0)
+        .animation(.easeInOut(duration: 0.1), value: showCharacterSelection)
       )
-      .fullScreenCover(isPresented: $showGame) {
-        GameView()
+      .fullScreenCover(isPresented: $showCharacterSelection) {
+        CharacterSelectionView()
       }
   }
 }

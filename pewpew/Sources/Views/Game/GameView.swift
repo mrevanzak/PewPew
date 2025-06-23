@@ -10,7 +10,7 @@ import SwiftUI
 
 /// Clean main game view that orchestrates all components
 struct GameView: View {
-  @StateObject private var viewModel = GameViewModel()
+  @EnvironmentObject var viewModel: GameViewModel
 
   var body: some View {
     GeometryReader { geometry in

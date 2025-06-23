@@ -17,6 +17,7 @@ final class GameViewModel: GameStateManaging {
   @Published var isGameOver = false
   @Published var gameStarted = false
   @Published var viewSize: CGSize = .zero
+  @Published var selectedCharacter: Character = .sheriffBeq
 
   // MARK: - Services
   let handDetectionService = HandDetectionService()
@@ -73,6 +74,12 @@ final class GameViewModel: GameStateManaging {
 
   func updateViewSize(_ size: CGSize) {
     viewSize = size
+  }
+
+  // MARK: - Character Selection
+
+  func selectCharacter(_ character: Character) {
+    selectedCharacter = character
   }
 
   // MARK: - Private Helpers
