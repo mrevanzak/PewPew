@@ -107,13 +107,13 @@ struct CharacterView: View {
           .resizable()
           .aspectRatio(contentMode: .fit)
           .frame(height: characterHeight * 0.6)
-          .offset(x: -characterHeight * 0.4, y: -characterHeight * 0.18)
+          .offset(x: -characterHeight * 0.35, y: -characterHeight * 0.18)
 
         Image("\(character.imageName)RightHand")
           .resizable()
           .aspectRatio(contentMode: .fit)
           .frame(height: characterHeight * 0.6)
-          .offset(x: characterHeight * 0.4, y: -characterHeight * 0.18)
+          .offset(x: characterHeight * 0.35, y: -characterHeight * 0.18)
 
         Image("\(character.imageName)Back")
           .resizable()
