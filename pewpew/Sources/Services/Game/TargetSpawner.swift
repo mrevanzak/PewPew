@@ -41,8 +41,8 @@ final class TargetSpawner: TargetSpawning {
   func spawnTarget() {
     guard let scene = scene, isSpawning else { return }
 
-    // Randomly spawn alien without ufo (e.g. 50% chance)
-    if Double.random(in: 0...1) < 0.50 {
+    // Randomly spawn alien without ufo (e.g. 30% chance)
+    if Double.random(in: 0...1) < 0.30 {
       let spawnLeft = Bool.random()
       spawnAlienWithoutUfo(onLeft: spawnLeft)
       return

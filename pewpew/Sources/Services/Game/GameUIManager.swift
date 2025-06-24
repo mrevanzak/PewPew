@@ -104,12 +104,12 @@ final class GameUIManager: GameUIUpdating {
     // Create background sprite
     let bulletBackground = SKSpriteNode(imageNamed: AssetName.bullet)
     bulletBackground.name = "bulletBackground"
-    bulletBackground.size = CGSize(width: 60, height: 140)
+    bulletBackground.size = CGSize(width: 80, height: 180)
     bulletBackground.zRotation = -(CGFloat.pi / 2)
 
     bulletLabel = SKLabelNode(fontNamed: "Worktalk")
     bulletLabel?.text = "\(GameConfiguration.Game.initialBullets)"
-    bulletLabel?.fontSize = GameConfiguration.UI.labelFontSize
+    bulletLabel?.fontSize = 48
     bulletLabel?.fontColor = .white
 
     if let bulletLabel = bulletLabel {
