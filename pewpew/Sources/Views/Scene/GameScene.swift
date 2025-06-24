@@ -94,6 +94,10 @@ final class GameScene: SKScene {
 
   // MARK: - Public Interface
 
+  func setPaused(_ paused: Bool) {
+    self.isPaused = paused
+  }
+
   func startSpawning() {
     targetSpawner?.startSpawning()
   }
@@ -110,6 +114,7 @@ final class GameScene: SKScene {
   }
 
   func updateCirclesWithHandData(_ handData: HandDetectionData) {
+    guard !self.isPaused else { return }
     handTracker?.updateHandCircles(with: handData)
     handTracker?.detectShootGesture(for: handData)
   }
@@ -323,6 +328,9 @@ struct SpriteView: View {
             gameScene.resetScene()
             gameScene.startSpawning()
           }
+        }
+        .onChange(of: viewModel.isPaused) { _, isPaused in
+          gameScene.setPaused(isPaused)
         }
     }
   }

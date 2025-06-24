@@ -18,6 +18,7 @@ final class GameViewModel: GameStateManaging {
   @Published var gameStarted = false
   @Published var viewSize: CGSize = .zero
   @Published var selectedCharacter: Character = .sheriffBeq
+  @Published var isPaused = false
 
   // MARK: - Services
   let handDetectionService = HandDetectionService()
@@ -80,6 +81,18 @@ final class GameViewModel: GameStateManaging {
 
   func selectCharacter(_ character: Character) {
     selectedCharacter = character
+  }
+
+  // MARK: - Pause/Resume
+
+  func pauseGame() {
+    guard gameStarted, !isPaused else { return }
+    isPaused = true
+  }
+
+  func resumeGame() {
+    guard isPaused else { return }
+    isPaused = false
   }
 
   // MARK: - Private Helpers

@@ -31,11 +31,41 @@ struct GameView: View {
             screenSize: geometry.size,
           )
 
+          // Pause button (top-right)
+          VStack {
+            HStack {
+              Spacer()
+              Button(action: {
+                viewModel.pauseGame()
+              }) {
+                Image("pause")
+                  .resizable()
+                  .frame(width: 60, height: 60)
+                  .foregroundColor(.white)
+                  .shadow(radius: 4)
+              }
+              .padding(.top, 24)
+              .padding(.trailing, 24)
+            }
+            Spacer()
+          }
+          .opacity(viewModel.isGameOver || viewModel.isPaused ? 0 : 1)
+
           // Game over overlay
           if viewModel.isGameOver {
             GameOverOverlayView(score: viewModel.score, onReplay: {
               viewModel.replayGame()
             }, onMenu: {
+              showMenu = true
+            })
+          }
+
+          // Pause overlay
+          if viewModel.isPaused && !viewModel.isGameOver {
+            PauseOverlayView(onResume: {
+              viewModel.resumeGame()
+            }, onMenu: {
+              viewModel.stopGame()
               showMenu = true
             })
           }
@@ -180,6 +210,41 @@ struct GameOverOverlayView: View {
       .padding(40)
       .shadow(radius: 20)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+  }
+}
+
+// MARK: - Pause Overlay View
+struct PauseOverlayView: View {
+  let onResume: () -> Void
+  let onMenu: () -> Void
+  var body: some View {
+    ZStack {
+      Color.black.opacity(0.6).ignoresSafeArea()
+      VStack(spacing: 32) {
+        Text("Paused")
+          .font(.custom("Worktalk", size: 48))
+          .foregroundColor(.white)
+          .padding(.bottom, 16)
+        Button(action: onResume) {
+          Text("Resume")
+            .font(.custom("Worktalk", size: 36))
+            .foregroundColor(.white)
+            .padding(.horizontal, 40)
+            .padding(.vertical, 12)
+            .background(Color.green.opacity(0.8))
+            .cornerRadius(12)
+        }
+        Button(action: onMenu) {
+          Text("Menu")
+            .font(.custom("Worktalk", size: 36))
+            .foregroundColor(.white)
+            .padding(.horizontal, 40)
+            .padding(.vertical, 12)
+            .background(Color.red.opacity(0.8))
+            .cornerRadius(12)
+        }
+      }
     }
   }
 }
