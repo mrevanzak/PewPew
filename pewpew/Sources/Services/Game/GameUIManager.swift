@@ -121,38 +121,66 @@ final class GameUIManager: GameUIUpdating {
   private func updateLabelPositions() {
     guard let scene = scene else { return }
 
-    let padding = GameConfiguration.UI.labelPadding
+    positionScoreUI(in: scene)
+    positionBulletUI(in: scene)
+  }
 
-    // Position score label at top left
-    if let scoreLabel = scoreLabel {
-      scoreLabel.position = CGPoint(
-        x: padding + scoreLabel.frame.width / 2,
-        y: scene.size.height - padding
-      )
+  // MARK: - UI Positioning Constants
 
-      // Update score background position
-      if let scoreBackground = scene.childNode(withName: "scoreBackground") {
-        scoreBackground.position =
-          CGPoint(x: scoreLabel.position.x, y: scoreLabel.position.y + scoreLabel.frame.height / 2)
-      }
-    }
+  private struct UIPositioning {
+    static let padding = GameConfiguration.UI.labelPadding
+    static let baseXPosition = padding + 48
+    static let bulletTextOffset: CGFloat = 56  // Total offset for bullet text positioning
+  }
 
-    // Position bullet label at bottom left
-    if let bulletLabel = bulletLabel {
-      bulletLabel.position = CGPoint(
-        x: padding + bulletLabel.frame.width / 2,
-        y: padding + bulletLabel.frame.height / 2
-      )
+  // MARK: - Score UI Positioning
 
-      // Update bullet background position
-      if let bulletBackground = scene.childNode(withName: "bulletBackground") {
-        bulletBackground.position =
-          CGPoint(
-            x: bulletLabel.position.x, y: bulletLabel.position.y + bulletLabel.frame.height / 2)
+  private func positionScoreUI(in scene: SKScene) {
+    guard let scoreLabel = scoreLabel else { return }
 
-        bulletLabel.position.x = bulletLabel.position.x - 28
-      }
-    }
+    let scorePosition = CGPoint(
+      x: UIPositioning.baseXPosition,
+      y: scene.size.height - UIPositioning.padding
+    )
+
+    scoreLabel.position = scorePosition
+    positionScoreBackground(at: scorePosition, in: scene)
+  }
+
+  private func positionScoreBackground(at labelPosition: CGPoint, in scene: SKScene) {
+    guard let scoreBackground = scene.childNode(withName: "scoreBackground"),
+      let scoreLabel = scoreLabel
+    else { return }
+
+    scoreBackground.position = CGPoint(
+      x: labelPosition.x,
+      y: labelPosition.y + scoreLabel.frame.height / 2
+    )
+  }
+
+  // MARK: - Bullet UI Positioning
+
+  private func positionBulletUI(in scene: SKScene) {
+    guard let bulletLabel = bulletLabel else { return }
+
+    let bulletTextPosition = CGPoint(
+      x: UIPositioning.baseXPosition - UIPositioning.bulletTextOffset,
+      y: UIPositioning.padding + bulletLabel.frame.height / 2
+    )
+
+    let bulletBackgroundPosition = CGPoint(
+      x: UIPositioning.baseXPosition - 28,
+      y: bulletTextPosition.y + bulletLabel.frame.height / 2
+    )
+
+    bulletLabel.position = bulletTextPosition
+    positionBulletBackground(at: bulletBackgroundPosition, in: scene)
+  }
+
+  private func positionBulletBackground(at position: CGPoint, in scene: SKScene) {
+    guard let bulletBackground = scene.childNode(withName: "bulletBackground") else { return }
+
+    bulletBackground.position = position
   }
 
   private func animateEffect(_ effectLabel: SKLabelNode) {
