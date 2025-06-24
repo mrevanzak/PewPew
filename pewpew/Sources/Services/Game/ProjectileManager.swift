@@ -21,8 +21,8 @@ final class ProjectileManager: ProjectileManaging {
       scoreManager.useBullet()
     else { return }
 
-    let projectile = createProjectile()
-    let startPosition = CGPoint(x: scene.size.width / 2, y: 0)
+    let startPosition = CGPoint(x: scene.size.width / 2, y: scene.size.height * 0.15)
+    let projectile = createProjectile(targetPosition: targetPosition, startPosition: startPosition)
     projectile.position = startPosition
 
     scene.addChild(projectile)
@@ -43,12 +43,16 @@ final class ProjectileManager: ProjectileManaging {
 
   // MARK: - Private Helpers
 
-  private func createProjectile() -> SKShapeNode {
-    let projectile = SKShapeNode(circleOfRadius: GameConfiguration.UI.projectileRadius)
-    projectile.fillColor = .white
-    projectile.strokeColor = .yellow
-    projectile.lineWidth = 2
+  private func createProjectile(targetPosition: CGPoint, startPosition: CGPoint) -> SKSpriteNode {
+    let projectile = SKSpriteNode(imageNamed: "bullet")
+    projectile.size = CGSize(width: 15, height: 35)
     projectile.name = NodeName.projectile
+
+    // Calculate angle and rotate projectile to face target
+    let deltaX = targetPosition.x - startPosition.x
+    let deltaY = targetPosition.y - startPosition.y
+    let angle = atan2(deltaY, deltaX) - CGFloat.pi / 2
+    projectile.zRotation = angle
 
     // Setup physics
     projectile.physicsBody = SKPhysicsBody(circleOfRadius: GameConfiguration.UI.projectileRadius)
