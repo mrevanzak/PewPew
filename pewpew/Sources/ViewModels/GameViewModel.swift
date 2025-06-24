@@ -105,5 +105,14 @@ final class GameViewModel: GameStateManaging {
         self.gameOver(finalScore: self.score)
       }
       .store(in: &cancellables)
+
+    // Observe camera permission changes to trigger UI updates
+    cameraManager.$permissionGranted
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] _ in
+        // Force objectWillChange to trigger UI updates
+        self?.objectWillChange.send()
+      }
+      .store(in: &cancellables)
   }
 }
