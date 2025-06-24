@@ -166,6 +166,7 @@ extension GameScene: SKPhysicsContactDelegate {
     if target.name == NodeName.bulletTarget {
       // Bullet target gives bullets
       scoreManager.addBullets(GameConfiguration.Game.bulletReward)
+      run(SKAction.playSoundFileNamed("impactEffect.mp3", waitForCompletion: false))
       uiManager.showEffect(
         at: target.position,
         text: "+\(GameConfiguration.Game.bulletReward) Bullets",
@@ -174,7 +175,8 @@ extension GameScene: SKPhysicsContactDelegate {
     } else {
       // Alien target gives score with enhanced effects
       scoreManager.addScore(GameConfiguration.Game.targetScoreValue)
-
+      // Play score sound
+      run(SKAction.playSoundFileNamed("scoreSound.mp3", waitForCompletion: false))
       // Enhanced alien hit effect
       if let sprite = target as? SKSpriteNode {
         if sprite.name == NodeName.alienTarget {
