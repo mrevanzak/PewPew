@@ -9,8 +9,8 @@ enum GameConfiguration {
     static let handCircleSize: CGFloat = 70
     static let projectileRadius: CGFloat = 12
     static let screenMargin: CGFloat = 30
-    static let labelPadding: CGFloat = 24
-    static let labelFontSize: CGFloat = 24
+    static let labelPadding: CGFloat = 60
+    static let labelFontSize: CGFloat = 32
     static let effectFontSize: CGFloat = 16
   }
 
@@ -67,6 +67,7 @@ enum AssetName {
   static let lootbox = "lootbox"
   static let bullet = "bullet"
   static let impact = "impact"
+  static let scoreBoard = "scoreBoard"
 }
 
 // MARK: - Animation Configurations
