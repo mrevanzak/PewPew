@@ -221,6 +221,7 @@ extension GameScene: SKPhysicsContactDelegate {
   private func createAlienCrashEffect(for sprite: SKSpriteNode) {
     // Stop all existing actions (movement and wiggle)
     sprite.removeAllActions()
+    sprite.physicsBody = nil
 
     let crashTexture = SKTexture(imageNamed: AssetName.alienCrash)
 

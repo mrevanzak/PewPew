@@ -19,6 +19,7 @@ final class GameViewModel: GameStateManaging {
   @Published var viewSize: CGSize = .zero
   @Published var selectedCharacter: Character = .sheriffBeq
   @Published var isPaused = false
+  @Published var timeRemaining = GameConfiguration.Game.timeLimitSeconds
 
   // MARK: - Services
   let handDetectionService = HandDetectionService()
@@ -27,6 +28,7 @@ final class GameViewModel: GameStateManaging {
 
   // MARK: - Private Properties
   private var cancellables = Set<AnyCancellable>()
+  private var timer: Timer?
 
   // MARK: - Initialization
   init() {
@@ -43,11 +45,14 @@ final class GameViewModel: GameStateManaging {
     isGameOver = false
     scoreManager.resetScore()
     cameraManager.startSession()
+    timeRemaining = GameConfiguration.Game.timeLimitSeconds
+    startTimer()
   }
 
   func stopGame() {
     gameStarted = false
     cameraManager.stopSession()
+    stopTimer()
   }
 
   func gameOver(finalScore: Int? = nil) {
@@ -88,11 +93,13 @@ final class GameViewModel: GameStateManaging {
   func pauseGame() {
     guard gameStarted, !isPaused else { return }
     isPaused = true
+    stopTimer()
   }
 
   func resumeGame() {
     guard isPaused else { return }
     isPaused = false
+    startTimer()
   }
 
   // MARK: - Private Helpers
@@ -127,5 +134,25 @@ final class GameViewModel: GameStateManaging {
         self?.objectWillChange.send()
       }
       .store(in: &cancellables)
+  }
+
+  // MARK: - Timer Helpers
+  private func startTimer() {
+    stopTimer()
+    guard !isPaused, !isGameOver else { return }
+    timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+      guard let self = self else { return }
+      if self.timeRemaining > 0 {
+        self.timeRemaining -= 1
+        if self.timeRemaining == 0 {
+          self.gameOver(finalScore: self.score)
+        }
+      }
+    }
+  }
+
+  private func stopTimer() {
+    timer?.invalidate()
+    timer = nil
   }
 }

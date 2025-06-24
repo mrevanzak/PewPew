@@ -51,6 +51,21 @@ struct GameView: View {
           }
           .opacity(viewModel.isGameOver || viewModel.isPaused ? 0 : 1)
 
+          // Timer display (top center)
+          VStack {
+            HStack {
+              Spacer()
+              Text(timeString(from: viewModel.timeRemaining))
+                .font(.custom("Worktalk", size: 48))
+                .foregroundColor(.white)
+                .padding(.top, 24)
+                .shadow(radius: 4)
+              Spacer()
+            }
+            Spacer()
+          }
+          .opacity(viewModel.isGameOver || viewModel.isPaused ? 0 : 1)
+
           // Game over overlay
           if viewModel.isGameOver {
             GameOverOverlayView(score: viewModel.score, onReplay: {
@@ -247,6 +262,13 @@ struct PauseOverlayView: View {
       }
     }
   }
+}
+
+// Helper for formatting time
+private func timeString(from seconds: Int) -> String {
+  let minutes = seconds / 60
+  let secs = seconds % 60
+  return String(format: "%02d:%02d", minutes, secs)
 }
 
 #Preview(traits: .landscapeRight) {

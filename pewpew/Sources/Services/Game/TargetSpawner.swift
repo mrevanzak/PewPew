@@ -169,13 +169,14 @@ final class TargetSpawner: TargetSpawning {
 
     let texture = SKTexture(imageNamed: "alienWithoutUfo")
     let aspectRatio = texture.size().width / texture.size().height
-    let size = building.size.width * 0.4 // slightly smaller than building width
+    let size = building.size.width * 0.6 // slightly smaller than building width
     let alienSize = CGSize(width: size * aspectRatio, height: size)
 
     let alien = SKSpriteNode(texture: texture, color: .clear, size: alienSize)
     alien.physicsBody = SKPhysicsBody(texture: texture, size: alienSize)
     setupPhysicsBody(for: alien)
     alien.setScale(0.0)
+    alien.zPosition = -2
     // Tag for uniqueness
     alien.userData = NSMutableDictionary()
     alien.userData?["alienWithoutUfoTag"] = alienTag
@@ -185,12 +186,12 @@ final class TargetSpawner: TargetSpawning {
     let x: CGFloat
     if onLeft {
       // Top left edge
-      x = building.position.x + 15 - building.size.width / 2 + alienSize.width / 2
+      x = building.position.x + 20 - building.size.width / 2 + alienSize.width / 2
     } else {
       // Top right edge
-      x = building.position.x - 15 + building.size.width / 2 - alienSize.width / 2
+      x = building.position.x - 20 + building.size.width / 2 - alienSize.width / 2
     }
-    let yOffset: CGFloat = -alienSize.height * 0.30
+    let yOffset: CGFloat = -alienSize.height * 0.5
     let y = building.position.y + building.size.height / 2 + alienSize.height / 2 + yOffset
     alien.position = CGPoint(x: x, y: y)
     scene.addChild(alien)

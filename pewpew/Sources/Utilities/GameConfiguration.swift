@@ -27,11 +27,12 @@ enum GameConfiguration {
   enum Game {
     static let maxBullets = 100
     static let initialBullets = 20
-    static let targetScoreValue = 10
+    static let targetScoreValue = 1
     static let bulletReward = 8
     static let projectileSpeed: CGFloat = 900.0
     static let handDetectionConfidenceThreshold: Float = 0.5
     static let handOpenThreshold: CGFloat = 0.10
+    static let timeLimitSeconds: Int = 180 // 5 minutes
   }
 
   // MARK: - Timing Constants
