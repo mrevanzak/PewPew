@@ -44,7 +44,7 @@ final class ProjectileManager: ProjectileManaging {
   // MARK: - Private Helpers
 
   private func createProjectile(targetPosition: CGPoint, startPosition: CGPoint) -> SKSpriteNode {
-    let projectile = SKSpriteNode(imageNamed: "bullet")
+    let projectile = SKSpriteNode(imageNamed: AssetName.bullet)
     projectile.size = CGSize(width: 15, height: 35)
     projectile.name = NodeName.projectile
 

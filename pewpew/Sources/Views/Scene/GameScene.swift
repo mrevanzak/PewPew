@@ -5,9 +5,9 @@
 //  Clean SpriteKit scene focused on rendering and physics
 //
 
+import Combine
 import SpriteKit
 import SwiftUI
-import Combine
 
 // MARK: - Clean Game Scene
 final class GameScene: SKScene {
@@ -190,11 +190,9 @@ extension GameScene: SKPhysicsContactDelegate {
   // MARK: - Enhanced Effects
 
   private func createImpactEffect(at position: CGPoint) {
-    let impact = SKShapeNode(circleOfRadius: 32)
+    let impact = SKSpriteNode(imageNamed: AssetName.impact)
+    impact.size = CGSize(width: 64, height: 64)
     impact.position = position
-    impact.strokeColor = .red
-    impact.lineWidth = 4
-    impact.fillColor = UIColor.red.withAlphaComponent(0.3)
     impact.zPosition = 999
     addChild(impact)
 
