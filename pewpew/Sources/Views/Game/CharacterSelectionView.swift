@@ -10,12 +10,21 @@ struct CharacterSelectionView: View {
   let screenHeight = UIScreen.main.bounds.size.height
 
   var body: some View {
-    Image("chooseCharacter")
+    Image("bg")
       .resizable()
       .aspectRatio(contentMode: .fill)
       .ignoresSafeArea()
       .overlay(
-        VStack(spacing: 40.0) {
+        VStack {
+          Image("logo")
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+
+          Text("Choose character")
+            .font(.custom("Worktalk", size: 48))
+            .foregroundColor(Color(red: 0.517, green: 0.333, blue: 0.191))
+            .shadow(color: .brown.opacity(0.6), radius: 2, x: 2, y: 2)
+
           // Character Selection Buttons
           HStack(spacing: 60) {
             CharacterButton(
@@ -35,25 +44,28 @@ struct CharacterSelectionView: View {
 
           // Start Button
           Button(action: startGame) {
-            Text("START")
-              .font(.custom("Worktalk", size: 48))
-              .foregroundColor(Color(red: 1.0, green: 0.846, blue: 0.613))
+            Image(systemName: "play.fill")
+              .padding(.all, 28.0)
+              .font(.system(size: 72))
+              .foregroundColor(.white)
               .shadow(color: .brown.opacity(0.6), radius: 2, x: 2, y: 2)
-              .padding(.horizontal, 40)
-              .padding(.vertical, 15)
               .background(
-                RoundedRectangle(cornerRadius: 15)
-                  .fill(Color(red: 0.517, green: 0.333, blue: 0.191))
+                Ellipse()
+                  .fill(
+                    selectedCharacter == nil
+                      ? Color(red: 1.0, green: 0.846, blue: 0.613)
+                      : Color(red: 0.517, green: 0.333, blue: 0.191)
+                  )
                   .shadow(color: .black.opacity(0.3), radius: 3, x: 2, y: 2)
               )
-              .opacity(selectedCharacter == nil ? 0.5 : 1.0)
           }
           .disabled(selectedCharacter == nil)
           .transition(.scale.combined(with: .opacity))
           .animation(.easeInOut(duration: 0.3), value: selectedCharacter)
+
+          Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .padding(.top, screenHeight * 0.3)
+        .frame(maxWidth: .infinity, maxHeight: screenHeight * 0.9)
       )
       .fullScreenCover(isPresented: $showGame) {
         GameView()
@@ -81,7 +93,7 @@ struct CharacterButton: View {
   let isSelected: Bool
   let action: () -> Void
 
-  let height = 240.0
+  var height = UIScreen.main.bounds.size.height * 0.45
 
   var body: some View {
     Button(action: action) {
