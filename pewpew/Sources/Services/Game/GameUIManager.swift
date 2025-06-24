@@ -17,6 +17,7 @@ final class GameUIManager: GameUIUpdating {
   func setupUI() {
     setupScoreLabel()
     setupBulletLabel()
+    // setupBuildings() removed from here
   }
 
   // MARK: - GameUIUpdating Implementation
@@ -199,6 +200,35 @@ final class GameUIManager: GameUIUpdating {
     ])
 
     effectLabel.run(effectSequence)
+  }
+
+  // MARK: - Building Layout
+  func layoutBuildings(for size: CGSize) {
+    guard let scene = scene else { return }
+    // Remove old buildings if any
+    scene.childNode(withName: "leftBuilding")?.removeFromParent()
+    scene.childNode(withName: "rightBuilding")?.removeFromParent()
+
+    let buildingTexture = SKTexture(imageNamed: "building")
+    let buildingSize = CGSize(width: size.width * 0.18, height: size.height * 0.6)
+    let yPos = buildingSize.height / 2 // bottom aligned
+
+    // Left building (flipped horizontally)
+    let leftBuilding = SKSpriteNode(texture: buildingTexture)
+    leftBuilding.size = buildingSize
+    leftBuilding.position = CGPoint(x: leftBuilding.size.width / 2, y: yPos)
+    leftBuilding.zPosition = -1
+    leftBuilding.name = "leftBuilding"
+    leftBuilding.xScale = -1 // flip horizontally
+    scene.addChild(leftBuilding)
+
+    // Right building
+    let rightBuilding = SKSpriteNode(texture: buildingTexture)
+    rightBuilding.size = buildingSize
+    rightBuilding.position = CGPoint(x: size.width - rightBuilding.size.width / 2, y: yPos)
+    rightBuilding.zPosition = -1
+    rightBuilding.name = "rightBuilding"
+    scene.addChild(rightBuilding)
   }
 
   // MARK: - Scene Size Changes

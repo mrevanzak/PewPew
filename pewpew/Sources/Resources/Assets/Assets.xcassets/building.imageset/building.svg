@@ -1,0 +1,72 @@
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 320.78 733.81"><defs><style>
+      .st0 {
+        fill: #915e3b;
+      }
+      .st0, .st1, .st2, .st3, .st4, .st5, .st6, .st7, .st8, .st9, .st10, .st11, .st12, .st13 {
+        stroke-linejoin: round;
+      }
+      .st0, .st1, .st2, .st3, .st5, .st6, .st7, .st9, .st10, .st11, .st12, .st13 {
+        stroke-width: 5.02px;
+      }
+      .st0, .st1, .st3, .st5, .st7, .st9, .st10, .st11, .st13 {
+        stroke: #4b2112;
+      }
+      .st1 {
+        fill: none;
+      }
+      .st2 {
+        fill: #85512d;
+        stroke: #70411f;
+      }
+      .st14, .st5 {
+        fill: #5b2111;
+      }
+      .st3 {
+        fill: #68341e;
+      }
+      .st4 {
+        fill: #5b371e;
+        stroke: #512e17;
+      }
+      .st4, .st8 {
+        stroke-width: 5.96px;
+      }
+      .st15 {
+        clip-path: url(#clippath-1);
+      }
+      .st16 {
+        clip-path: url(#clippath-3);
+      }
+      .st17 {
+        clip-path: url(#clippath-2);
+      }
+      .st6 {
+        stroke: #4c3626;
+      }
+      .st6, .st18, .st9 {
+        fill: #573e29;
+      }
+      .st7 {
+        fill: #67513c;
+      }
+      .st19, .st10 {
+        fill: #946036;
+      }
+      .st8 {
+        fill: #684024;
+        stroke: #5b361c;
+      }
+      .st11 {
+        fill: #341a0e;
+      }
+      .st12 {
+        fill: #56251c;
+        stroke: #371712;
+      }
+      .st13 {
+        fill: #3a1b0f;
+      }
+      .st20 {
+        clip-path: url(#clippath);
+      }
+    </style><clipPath id="clippath"><polygon class="st9" points="12.99 630.16 81.37 696.37 320 696.37 320 665.44 191.25 630.16 12.99 630.16"></polygon></clipPath><clipPath id="clippath-1"><polygon class="st10" points="247.49 677.23 135 630.16 135 411.05 247.49 348.25 247.49 677.23"></polygon></clipPath><clipPath id="clippath-2"><rect class="st5" x="199.71" y="36.22" width="120.28" height="304.71"></rect></clipPath><clipPath id="clippath-3"><polygon class="st5" points="199.71 336.52 135 343.75 135 176.66 199.71 86.22 199.71 336.52"></polygon></clipPath></defs><polygon class="st7" points="12.99 657.15 81.37 733.81 320.78 719.17 319.94 688.25 191.25 657.15 12.99 657.15"></polygon><g><polygon class="st18" points="12.99 630.16 81.37 696.37 320 696.37 320 665.44 191.25 630.16 12.99 630.16"></polygon><g class="st20"><line class="st6" x1="30.77" y1="619.43" x2="119.28" y2="695.48"></line><line class="st6" x1="62" y1="620.25" x2="166.25" y2="696.37"></line><line class="st6" x1="102.14" y1="626.84" x2="225.4" y2="696.37"></line><line class="st6" x1="135" y1="630.16" x2="293.05" y2="696.37"></line></g><polygon class="st1" points="12.99 630.16 81.37 696.37 320 696.37 320 665.44 191.25 630.16 12.99 630.16"></polygon></g><polygon class="st13" points="12.99 630.16 12.99 657.15 81.37 733.81 81.37 696.37 12.99 630.16"></polygon><rect class="st13" x="81.37" y="696.37" width="238.62" height="37.44"></rect><g><polygon class="st19" points="247.49 677.23 135 630.16 135 411.05 247.49 348.25 247.49 677.23"></polygon><g class="st15"><polygon class="st2" points="259.85 663.27 121.71 608.48 121.71 634.51 259.85 691.82 259.85 663.27"></polygon><polygon class="st2" points="257.36 362.33 128.18 435.8 124.56 410.02 253.39 334.05 257.36 362.33"></polygon></g><polygon class="st1" points="247.49 677.23 135 630.16 135 411.05 247.49 348.25 247.49 677.23"></polygon></g><polygon class="st11" points="318.67 677.23 247.49 677.23 247.49 348.25 320 348.25 318.67 677.23"></polygon><polygon class="st5" points="135 416.91 13.87 422.97 13.87 414.54 74.38 349.59 263.3 329.71 247.49 348.25 135 416.91"></polygon><g><rect class="st14" x="199.71" y="36.22" width="120.28" height="304.71"></rect><g class="st17"><rect class="st4" x="210.27" y="22.29" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="43.25" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="64.21" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="85.17" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="106.13" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="127.08" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="148.04" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="169" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="189.96" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="210.92" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="231.87" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="252.83" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="273.79" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="294.75" width="122.81" height="20.89"></rect><rect class="st4" x="210.27" y="315.71" width="122.81" height="20.89"></rect></g><rect class="st1" x="199.71" y="36.22" width="120.28" height="304.71"></rect></g><g><polygon class="st14" points="199.71 336.52 135 343.75 135 176.66 199.71 86.22 199.71 336.52"></polygon><g class="st16"><polygon class="st8" points="126.15 213.9 210.27 102.2 207.58 75.54 125.38 184.1 126.15 213.9"></polygon><polygon class="st8" points="126.15 246.72 210.27 135.03 207.58 108.37 125.38 216.93 126.15 246.72"></polygon><polygon class="st8" points="126.15 279.55 210.27 167.85 207.58 141.19 125.38 249.75 126.15 279.55"></polygon><polygon class="st8" points="126.15 312.37 210.27 200.68 207.58 174.02 125.38 282.58 126.15 312.37"></polygon><polygon class="st8" points="126.15 345.2 210.27 233.5 207.58 206.84 125.38 315.4 126.15 345.2"></polygon><polygon class="st8" points="126.15 378.02 210.27 266.33 207.58 239.67 125.38 348.23 126.15 378.02"></polygon><polygon class="st8" points="126.15 410.85 210.27 299.15 207.58 272.49 125.38 381.05 126.15 410.85"></polygon><polygon class="st8" points="126.15 443.67 210.27 331.98 207.58 305.32 125.38 413.88 126.15 443.67"></polygon></g><polygon class="st1" points="199.71 336.52 135 343.75 135 176.66 199.71 86.22 199.71 336.52"></polygon></g><polygon class="st0" points="199.71 59.85 115.45 176.66 115.45 138.24 199.71 14.15 199.71 59.85"></polygon><polygon class="st0" points="199.71 86.22 135 176.66 135 188.58 125.38 176.66 115.45 176.66 199.71 59.85 199.71 86.22"></polygon><polygon class="st4" points="166.89 643.51 166.89 448.38 211.29 423.27 211.29 660.53 166.89 643.51"></polygon><rect class="st0" x="199.71" y="14.15" width="15.74" height="326.78"></rect><rect class="st3" x="158.14" y="361.41" width="16.7" height="334.97"></rect><rect class="st3" x="28.81" y="423.27" width="10.41" height="211.23"></rect><rect class="st3" x="49.06" y="423.27" width="10.41" height="211.23"></rect><polyline class="st12" points="320 340.94 68.98 358.9 66.71 349.59 320 323.75 320 340.94"></polyline><rect class="st3" x="86.98" y="361.41" width="16.7" height="334.97"></rect><polygon class="st12" points="66.71 349.59 13.74 411.77 13.87 422.97 68.98 358.9 66.71 349.59"></polygon><polygon class="st12" points="28.81 436.75 86.98 375.54 86.98 357.49 28.81 423.27 28.81 436.75"></polygon><polyline class="st12" points="320 365.01 86.98 375.54 86.98 357.49 320 340.94 320 365.01"></polyline></svg>

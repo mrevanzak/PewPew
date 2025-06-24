@@ -106,6 +106,7 @@ final class GameScene: SKScene {
     removeAllChildren()
     targetSpawner?.stopSpawning()
     setupUI()
+    uiManager?.layoutBuildings(for: self.size)
   }
 
   func updateCirclesWithHandData(_ handData: HandDetectionData) {
@@ -117,6 +118,7 @@ final class GameScene: SKScene {
   override func didChangeSize(_ oldSize: CGSize) {
     super.didChangeSize(oldSize)
     uiManager?.updateForSceneSize()
+    uiManager?.layoutBuildings(for: self.size)
   }
 }
 
@@ -132,14 +134,14 @@ extension GameScene: SKPhysicsContactDelegate {
 
     // Check for projectile-target collision
     if names.contains(NodeName.projectile)
-      && (names.contains(NodeName.alienTarget) || names.contains(NodeName.bulletTarget))
+      && (names.contains(NodeName.alienTarget) || names.contains(NodeName.bulletTarget) || names.contains("alienWithoutUfo_left") || names.contains("alienWithoutUfo_right"))
     {
 
       let projectile =
         contact.bodyA.node?.name == NodeName.projectile ? contact.bodyA.node : contact.bodyB.node
       let target =
         contact.bodyA.node?.name == NodeName.alienTarget
-          || contact.bodyA.node?.name == NodeName.bulletTarget
+          || contact.bodyA.node?.name == NodeName.bulletTarget || contact.bodyA.node?.name == "alienWithoutUfo_left" || contact.bodyA.node?.name == "alienWithoutUfo_right"
         ? contact.bodyA.node : contact.bodyB.node
 
       guard let projectileNode = projectile,
@@ -169,9 +171,14 @@ extension GameScene: SKPhysicsContactDelegate {
       scoreManager.addScore(GameConfiguration.Game.targetScoreValue)
 
       // Enhanced alien hit effect
-      if let sprite = target as? SKSpriteNode, sprite.name == NodeName.alienTarget {
-        createImpactEffect(at: sprite.position)
-        createAlienCrashEffect(for: sprite)
+      if let sprite = target as? SKSpriteNode {
+        if sprite.name == NodeName.alienTarget {
+          createImpactEffect(at: sprite.position)
+          createAlienCrashEffect(for: sprite)
+        } else {
+          createImpactEffect(at: sprite.position)
+          createAlienWithoutUfoCrashEffect(for: sprite)
+        }
       }
 
       uiManager.showEffect(
@@ -209,6 +216,35 @@ extension GameScene: SKPhysicsContactDelegate {
     sprite.removeAllActions()
 
     let crashTexture = SKTexture(imageNamed: AssetName.alienCrash)
+
+    // Create a better death animation sequence
+    let stopMovement = SKAction.run {
+      sprite.physicsBody?.velocity = CGVector(dx: 0, dy: 0)
+    }
+
+    let shortPause = SKAction.wait(forDuration: 0.1)
+    let setCrash = SKAction.run { sprite.texture = crashTexture }
+    let holdDeadImage = SKAction.wait(forDuration: 0.2)  // Show dead alien longer
+    let fadeOut = SKAction.fadeOut(withDuration: 0.4)
+    let remove = SKAction.removeFromParent()
+
+    let crashSequence = SKAction.sequence([
+      stopMovement,
+      shortPause,
+      setCrash,
+      holdDeadImage,
+      fadeOut,
+      remove,
+    ])
+
+    sprite.run(crashSequence)
+  }
+
+  private func createAlienWithoutUfoCrashEffect(for sprite: SKSpriteNode) {
+    // Stop all existing actions (movement and wiggle)
+    sprite.removeAllActions()
+
+    let crashTexture = SKTexture(imageNamed: "alienWithoutUfoDeath")
 
     // Create a better death animation sequence
     let stopMovement = SKAction.run {

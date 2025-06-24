@@ -41,6 +41,13 @@ final class TargetSpawner: TargetSpawning {
   func spawnTarget() {
     guard let scene = scene, isSpawning else { return }
 
+    // Randomly spawn alien without ufo (e.g. 50% chance)
+    if Double.random(in: 0...1) < 0.50 {
+      let spawnLeft = Bool.random()
+      spawnAlienWithoutUfo(onLeft: spawnLeft)
+      return
+    }
+
     let targetSize = CGFloat.random(
       in: GameConfiguration.Target.minSize...GameConfiguration.Target.maxSize)
     
@@ -147,6 +154,54 @@ final class TargetSpawner: TargetSpawning {
     
     
     target.run(SKAction.sequence([moveAction, removeAction]))
+  }
+
+  // MARK: - Alien Without UFO
+  func spawnAlienWithoutUfo(onLeft: Bool) {
+    guard let scene = scene else { return }
+    // Find the building node
+    let buildingName = onLeft ? "leftBuilding" : "rightBuilding"
+    guard let building = scene.childNode(withName: buildingName) as? SKSpriteNode else { return }
+
+    // Prevent more than one alienWithoutUfo on this building
+    let alienTag = onLeft ? "alienWithoutUfo_left" : "alienWithoutUfo_right"
+    if scene.childNode(withName: alienTag) != nil { return }
+
+    let texture = SKTexture(imageNamed: "alienWithoutUfo")
+    let aspectRatio = texture.size().width / texture.size().height
+    let size = building.size.width * 0.4 // slightly smaller than building width
+    let alienSize = CGSize(width: size * aspectRatio, height: size)
+
+    let alien = SKSpriteNode(texture: texture, color: .clear, size: alienSize)
+    alien.physicsBody = SKPhysicsBody(texture: texture, size: alienSize)
+    setupPhysicsBody(for: alien)
+    alien.setScale(0.0)
+    // Tag for uniqueness
+    alien.userData = NSMutableDictionary()
+    alien.userData?["alienWithoutUfoTag"] = alienTag
+    alien.name = alienTag
+
+    // Position at the top edge of the building, offset a bit downward
+    let x: CGFloat
+    if onLeft {
+      // Top left edge
+      x = building.position.x + 15 - building.size.width / 2 + alienSize.width / 2
+    } else {
+      // Top right edge
+      x = building.position.x - 15 + building.size.width / 2 - alienSize.width / 2
+    }
+    let yOffset: CGFloat = -alienSize.height * 0.30
+    let y = building.position.y + building.size.height / 2 + alienSize.height / 2 + yOffset
+    alien.position = CGPoint(x: x, y: y)
+    scene.addChild(alien)
+
+    // Animate: pop in, stay, then pop out
+    let popIn = SKAction.scale(to: 1.0, duration: 0.18)
+    let wait = SKAction.wait(forDuration:10)
+    let popOut = SKAction.scale(to: 0.0, duration: 0.18)
+    let remove = SKAction.removeFromParent()
+    let sequence = SKAction.sequence([popIn, wait, popOut, remove])
+    alien.run(sequence)
   }
 }
 
