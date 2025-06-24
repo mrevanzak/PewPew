@@ -11,26 +11,33 @@ import SwiftUI
 /// Clean main game view that orchestrates all components
 struct GameView: View {
   @EnvironmentObject var viewModel: GameViewModel
+  @State private var showMenu = false
 
   var body: some View {
     GeometryReader { geometry in
       ZStack {
-        // Camera background
-        CameraBackgroundView(viewModel: viewModel)
+        if showMenu {
+          MenuView()
+        } else {
+          // Camera background
+          CameraBackgroundView(viewModel: viewModel)
 
-        // Game scene
-        SpriteView(viewModel: viewModel)
+          // Game scene
+          SpriteView(viewModel: viewModel)
 
-        // Character at center bottom
-        CharacterView(
-          character: viewModel.selectedCharacter,
-          screenSize: geometry.size,
-        )
+          // Character at center bottom
+          CharacterView(
+            character: viewModel.selectedCharacter,
+            screenSize: geometry.size,
+          )
 
-        // Game over overlay
-        if viewModel.isGameOver {
-          GameOverOverlayView(score: viewModel.score) {
-            viewModel.replayGame()
+          // Game over overlay
+          if viewModel.isGameOver {
+            GameOverOverlayView(score: viewModel.score, onReplay: {
+              viewModel.replayGame()
+            }, onMenu: {
+              showMenu = true
+            })
           }
         }
       }
@@ -129,34 +136,48 @@ struct CharacterView: View {
 struct GameOverOverlayView: View {
   let score: Int
   let onReplay: () -> Void
+  let onMenu: () -> Void
   var body: some View {
     ZStack {
-      Image("menu")
+      Image("gameoverOverlay")
         .resizable()
         .aspectRatio(contentMode: .fill)
         .ignoresSafeArea()
 
       VStack(spacing: 24) {
-        Text("Game Over")
-          .font(.largeTitle)
-          .fontWeight(.bold)
-          .foregroundColor(.red)
-        Text("Score: \(score)")
-          .font(.title2)
-          .foregroundColor(.primary)
+        ZStack {
+          Image("scoreBoard")
+          VStack(spacing: 12) {
+            Text("Game Over")
+              .font(.custom("Worktalk", size: 48))
+              .fontWeight(.bold)
+              .foregroundColor(.red)
+            Text("Score: \(score)")
+              .font(.custom("Worktalk", size: 48))
+              .foregroundColor(.white)
+          }
+        }
         Button(action: onReplay) {
           Text("Replay")
-            .font(.title3)
+            .font(.custom("Worktalk", size: 48))
             .fontWeight(.semibold)
             .padding(.horizontal, 32)
             .padding(.vertical, 12)
-            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+        }
+        
+        Button(action: onMenu) {
+          Text("Menu")
+            .font(.custom("Worktalk", size: 48))
+            .fontWeight(.semibold)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 12)
             .foregroundColor(.white)
             .cornerRadius(10)
         }
       }
       .padding(40)
-      .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
       .shadow(radius: 20)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -164,6 +185,5 @@ struct GameOverOverlayView: View {
 }
 
 #Preview(traits: .landscapeRight) {
-  GameView()
-    .environmentObject(GameViewModel())
+  GameOverOverlayView(score: 123, onReplay: { }, onMenu: { })
 }
