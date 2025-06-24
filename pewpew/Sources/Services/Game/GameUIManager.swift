@@ -71,6 +71,10 @@ final class GameUIManager: GameUIUpdating {
   private func setupScoreLabel() {
     guard let scene = scene else { return }
 
+    // Remove old score label and background if they exist
+    scene.childNode(withName: "scoreBackground")?.removeFromParent()
+    scoreLabel?.removeFromParent()
+
     // Create background sprite
     let scoreBackground = SKSpriteNode(imageNamed: AssetName.scoreBoard)
     scoreBackground.name = "scoreBackground"
@@ -81,20 +85,21 @@ final class GameUIManager: GameUIUpdating {
     scoreLabel?.fontSize = GameConfiguration.UI.labelFontSize
     scoreLabel?.fontColor = .white
 
-    updateLabelPositions()
-
     if let scoreLabel = scoreLabel {
-      // Add background first (behind the label)
+      // Add background and label to scene first
       scene.addChild(scoreBackground)
-      // Position the background at the same location as the label
-      scoreBackground.position = scoreLabel.position
-      // Add the label on top
       scene.addChild(scoreLabel)
     }
+    // Now update positions (frame is correct)
+    updateLabelPositions()
   }
 
   private func setupBulletLabel() {
     guard let scene = scene else { return }
+
+    // Remove old bullet label and background if they exist
+    scene.childNode(withName: "bulletBackground")?.removeFromParent()
+    bulletLabel?.removeFromParent()
 
     // Create background sprite
     let bulletBackground = SKSpriteNode(imageNamed: AssetName.bullet)
@@ -107,16 +112,13 @@ final class GameUIManager: GameUIUpdating {
     bulletLabel?.fontSize = GameConfiguration.UI.labelFontSize
     bulletLabel?.fontColor = .white
 
-    updateLabelPositions()
-
     if let bulletLabel = bulletLabel {
-      // Add background first (behind the label)
+      // Add background and label to scene first
       scene.addChild(bulletBackground)
-      // Position the background at the same location as the label
-      bulletBackground.position = bulletLabel.position
-      // Add the label on top
       scene.addChild(bulletLabel)
     }
+    // Now update positions (frame is correct)
+    updateLabelPositions()
   }
 
   private func updateLabelPositions() {
