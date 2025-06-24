@@ -150,7 +150,7 @@ final class GameUIManager: GameUIUpdating {
           CGPoint(
             x: bulletLabel.position.x, y: bulletLabel.position.y + bulletLabel.frame.height / 2)
 
-        bulletLabel.position.x = bulletLabel.position.x - bulletBackground.frame.width / 4
+        bulletLabel.position.x = bulletLabel.position.x - 28
       }
     }
   }
