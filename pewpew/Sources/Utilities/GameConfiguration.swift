@@ -25,10 +25,10 @@ enum GameConfiguration {
 
   // MARK: - Game Constants
   enum Game {
-    static let maxBullets = 20
-    static let initialBullets = 10
+    static let maxBullets = 100
+    static let initialBullets = 20
     static let targetScoreValue = 10
-    static let bulletReward = 3
+    static let bulletReward = 8
     static let projectileSpeed: CGFloat = 900.0
     static let handDetectionConfidenceThreshold: Float = 0.5
     static let handOpenThreshold: CGFloat = 0.10
@@ -49,8 +49,8 @@ enum GameConfiguration {
 
   // MARK: - Target Configuration
   enum Target {
-    static let minSize: CGFloat = 50
-    static let maxSize: CGFloat = 70
+    static let minSize: CGFloat = 70
+    static let maxSize: CGFloat = 100
     static let bulletTargetSpawnChance: Double = 0.2
     static let alienColors: [Color] = [.blue, .red, .green, .orange, .purple, .pink]
     static let minYPosition: CGFloat = 0.2  // 20% from bottom

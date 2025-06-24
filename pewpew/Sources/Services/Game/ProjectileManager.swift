@@ -28,6 +28,10 @@ final class ProjectileManager: ProjectileManaging {
     scene.addChild(projectile)
     animateProjectile(projectile, to: targetPosition)
 
+    // Play shoot sound effect
+    let shootSound = SKAction.playSoundFileNamed("revolverShoot.mp3", waitForCompletion: false)
+    scene.run(shootSound)
+
     // Check for game over after using bullet
     if scoreManager.currentBullets <= 0 {
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
