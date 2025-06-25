@@ -22,6 +22,9 @@ struct GameView: View {
           // Camera background
           CameraBackgroundView(viewModel: viewModel)
 
+          // Frame to hide the black bar
+          BlackBarHider(screenSize: geometry.size)
+
           // Game scene
           SpriteView(viewModel: viewModel)
 
@@ -68,21 +71,26 @@ struct GameView: View {
 
           // Game over overlay
           if viewModel.isGameOver {
-            GameOverOverlayView(score: viewModel.score, onReplay: {
-              viewModel.replayGame()
-            }, onMenu: {
-              showMenu = true
-            })
+            GameOverOverlayView(
+              score: viewModel.score,
+              onReplay: {
+                viewModel.replayGame()
+              },
+              onMenu: {
+                showMenu = true
+              })
           }
 
           // Pause overlay
           if viewModel.isPaused && !viewModel.isGameOver {
-            PauseOverlayView(onResume: {
-              viewModel.resumeGame()
-            }, onMenu: {
-              viewModel.stopGame()
-              showMenu = true
-            })
+            PauseOverlayView(
+              onResume: {
+                viewModel.resumeGame()
+              },
+              onMenu: {
+                viewModel.stopGame()
+                showMenu = true
+              })
           }
         }
       }
@@ -95,6 +103,50 @@ struct GameView: View {
       }
       .onChange(of: geometry.size) { _, newSize in
         viewModel.updateViewSize(newSize)
+      }
+    }
+    .ignoresSafeArea()
+  }
+}
+
+// MARK: - Black Bar Hider View
+struct BlackBarHider: View {
+  let screenSize: CGSize
+
+  // Standard camera aspect ratio (most mobile cameras use 16:9 or 4:3)
+  private let cameraAspectRatio: CGFloat = 16.0 / 9.0
+
+  private var blackBarHeight: CGFloat {
+    let screenAspectRatio = screenSize.width / screenSize.height
+
+    // If camera aspect ratio is wider than screen, we get top/bottom black bars
+    if cameraAspectRatio > screenAspectRatio {
+      let cameraHeightOnScreen = screenSize.width / cameraAspectRatio
+      return (screenSize.height - cameraHeightOnScreen) / 2
+    }
+    return 0
+  }
+
+  var body: some View {
+    VStack(spacing: 0) {
+      // Top black bar frame
+      if blackBarHeight > 0 {
+        Image("frame")
+          .resizable()
+          .aspectRatio(contentMode: .fill)
+          .frame(width: screenSize.width, height: blackBarHeight)
+          .clipped()
+      }
+
+      Spacer()
+
+      // Bottom black bar frame
+      if blackBarHeight > 0 {
+        Image("frame")
+          .resizable()
+          .aspectRatio(contentMode: .fill)
+          .frame(width: screenSize.width, height: blackBarHeight)
+          .clipped()
       }
     }
     .ignoresSafeArea()
@@ -211,7 +263,7 @@ struct GameOverOverlayView: View {
             .foregroundColor(.white)
             .cornerRadius(10)
         }
-        
+
         Button(action: onMenu) {
           Text("Menu")
             .font(.custom("Worktalk", size: 48))
@@ -272,5 +324,5 @@ private func timeString(from seconds: Int) -> String {
 }
 
 #Preview(traits: .landscapeRight) {
-  GameOverOverlayView(score: 123, onReplay: { }, onMenu: { })
+  GameView().environmentObject(GameViewModel())
 }
