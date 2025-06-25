@@ -32,7 +32,7 @@ enum GameConfiguration {
     static let projectileSpeed: CGFloat = 900.0
     static let handDetectionConfidenceThreshold: Float = 0.5
     static let handOpenThreshold: CGFloat = 0.10
-    static let timeLimitSeconds: Int = 180 // 5 minutes
+    static let timeLimitSeconds: Int = 60
   }
 
   // MARK: - Timing Constants

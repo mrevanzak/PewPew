@@ -172,7 +172,7 @@ final class GameUIManager: GameUIUpdating {
     )
 
     let bulletBackgroundPosition = CGPoint(
-      x: UIPositioning.baseXPosition - 28,
+      x: UIPositioning.baseXPosition - 10,
       y: bulletTextPosition.y + bulletLabel.frame.height / 2
     )
 
