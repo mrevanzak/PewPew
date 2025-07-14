@@ -4,9 +4,6 @@ import SwiftUI
 struct MenuView: View {
   @State private var showCharacterSelection = false
 
-  let screenWidth = UIScreen.main.bounds.size.width
-  let screenHeight = UIScreen.main.bounds.size.height
-
   var body: some View {
     Image("menu")
       .resizable()
@@ -34,11 +31,11 @@ struct MenuView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .padding(.bottom, 64)
-        .scaleEffect(showCharacterSelection ? 0.95 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: showCharacterSelection)
       )
       .fullScreenCover(isPresented: $showCharacterSelection) {
-        CharacterSelectionView()
+        CharacterSelectionView(dismissToRoot: {
+          showCharacterSelection = false
+        })
       }
   }
 }

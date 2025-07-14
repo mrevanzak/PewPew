@@ -6,6 +6,8 @@ struct CharacterSelectionView: View {
   @State private var selectedCharacter: Character?
   @State private var showGame = false
 
+  let dismissToRoot: () -> Void
+
   let screenWidth = UIScreen.main.bounds.size.width
   let screenHeight = UIScreen.main.bounds.size.height
 
@@ -68,7 +70,7 @@ struct CharacterSelectionView: View {
         .frame(maxWidth: .infinity, maxHeight: screenHeight * 0.9)
       )
       .fullScreenCover(isPresented: $showGame) {
-        GameView()
+        GameView(dismissToRoot: dismissToRoot)
           .environmentObject(gameViewModel)
       }
   }
@@ -118,5 +120,5 @@ struct CharacterButton: View {
 }
 
 #Preview(traits: .landscapeRight) {
-  CharacterSelectionView()
+  CharacterSelectionView(dismissToRoot: {})
 }

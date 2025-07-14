@@ -11,87 +11,85 @@ import SwiftUI
 /// Clean main game view that orchestrates all components
 struct GameView: View {
   @EnvironmentObject var viewModel: GameViewModel
-  @State private var showMenu = false
+  @Environment(\.dismiss) private var dismiss
+
+  let dismissToRoot: () -> Void
 
   var body: some View {
     GeometryReader { geometry in
       ZStack {
-        if showMenu {
-          MenuView()
-        } else {
-          // Camera background
-          CameraBackgroundView(viewModel: viewModel)
+        // Camera background
+        CameraBackgroundView(viewModel: viewModel)
 
-          // Frame to hide the black bar
-          BlackBarHider(screenSize: geometry.size)
+        // Frame to hide the black bar
+        BlackBarHider(screenSize: geometry.size)
 
-          // Game scene
-          SpriteView(viewModel: viewModel)
+        // Game scene
+        SpriteView(viewModel: viewModel)
 
-          // Character at center bottom
-          CharacterView(
-            character: viewModel.selectedCharacter,
-            screenSize: geometry.size,
-          )
+        // Character at center bottom
+        CharacterView(
+          character: viewModel.selectedCharacter,
+          screenSize: geometry.size,
+        )
 
-          // Pause button (top-right)
-          VStack {
-            HStack {
-              Spacer()
-              Button(action: {
-                viewModel.pauseGame()
-              }) {
-                Image("pause")
-                  .resizable()
-                  .frame(width: 60, height: 60)
-                  .foregroundColor(.white)
-                  .shadow(radius: 4)
-              }
-              .padding(.top, 24)
-              .padding(.trailing, 24)
-            }
+        // Pause button (top-right)
+        VStack {
+          HStack {
             Spacer()
-          }
-          .opacity(viewModel.isGameOver || viewModel.isPaused ? 0 : 1)
-
-          // Timer display (top center)
-          VStack {
-            HStack {
-              Spacer()
-              Text(timeString(from: viewModel.timeRemaining))
-                .font(.custom("Worktalk", size: 48))
+            Button(action: {
+              viewModel.pauseGame()
+            }) {
+              Image("pause")
+                .resizable()
+                .frame(width: 60, height: 60)
                 .foregroundColor(.white)
-                .padding(.top, 24)
                 .shadow(radius: 4)
-              Spacer()
             }
+            .padding(.top, 24)
+            .padding(.trailing, 24)
+          }
+          Spacer()
+        }
+        .opacity(viewModel.isGameOver || viewModel.isPaused ? 0 : 1)
+
+        // Timer display (top center)
+        VStack {
+          HStack {
+            Spacer()
+            Text(timeString(from: viewModel.timeRemaining))
+              .font(.custom("Worktalk", size: 48))
+              .foregroundColor(.white)
+              .padding(.top, 24)
+              .shadow(radius: 4)
             Spacer()
           }
-          .opacity(viewModel.isGameOver || viewModel.isPaused ? 0 : 1)
+          Spacer()
+        }
+        .opacity(viewModel.isGameOver || viewModel.isPaused ? 0 : 1)
 
-          // Game over overlay
-          if viewModel.isGameOver {
-            GameOverOverlayView(
-              score: viewModel.score,
-              onReplay: {
-                viewModel.replayGame()
-              },
-              onMenu: {
-                showMenu = true
-              })
-          }
+        // Game over overlay
+        if viewModel.isGameOver {
+          GameOverOverlayView(
+            score: viewModel.score,
+            onReplay: {
+              viewModel.replayGame()
+            },
+            onMenu: {
+              dismissToRoot()
+            })
+        }
 
-          // Pause overlay
-          if viewModel.isPaused && !viewModel.isGameOver {
-            PauseOverlayView(
-              onResume: {
-                viewModel.resumeGame()
-              },
-              onMenu: {
-                viewModel.stopGame()
-                showMenu = true
-              })
-          }
+        // Pause overlay
+        if viewModel.isPaused && !viewModel.isGameOver {
+          PauseOverlayView(
+            onResume: {
+              viewModel.resumeGame()
+            },
+            onMenu: {
+              viewModel.stopGame()
+              dismissToRoot()
+            })
         }
       }
       .onAppear {
@@ -324,5 +322,5 @@ private func timeString(from seconds: Int) -> String {
 }
 
 #Preview(traits: .landscapeRight) {
-  GameView().environmentObject(GameViewModel())
+  GameView(dismissToRoot: {}).environmentObject(GameViewModel())
 }
