@@ -31,15 +31,16 @@ struct CameraView: UIViewRepresentable {
 /// Custom UIView that manages AVCaptureVideoPreviewLayer with orientation support
 class CameraPreviewView: UIView {
   private var previewLayer: AVCaptureVideoPreviewLayer?
+  private let orientationManager = OrientationManager.shared
 
   override init(frame: CGRect) {
     super.init(frame: frame)
-    setupOrientationMonitoring()
+    setupOrientationObserver()
   }
 
   required init?(coder: NSCoder) {
     super.init(coder: coder)
-    setupOrientationMonitoring()
+    setupOrientationObserver()
   }
 
   func setupPreviewLayer(session: AVCaptureSession) {
@@ -50,7 +51,7 @@ class CameraPreviewView: UIView {
     self.previewLayer = previewLayer
 
     // Set initial orientation
-    updatePreviewLayerOrientation()
+    applyCurrentOrientation()
   }
 
   func updateFrame() {
@@ -60,7 +61,8 @@ class CameraPreviewView: UIView {
     }
   }
 
-  private func setupOrientationMonitoring() {
+  private func setupOrientationObserver() {
+    // Observe orientation changes from OrientationManager
     NotificationCenter.default.addObserver(
       self,
       selector: #selector(orientationChanged),
@@ -70,27 +72,12 @@ class CameraPreviewView: UIView {
   }
 
   @objc private func orientationChanged() {
-    updatePreviewLayerOrientation()
+    applyCurrentOrientation()
   }
 
-  private func updatePreviewLayerOrientation() {
+  private func applyCurrentOrientation() {
     guard let connection = previewLayer?.connection else { return }
-
-    let deviceOrientation = UIDevice.current.orientation
-    let rotationAngle: CGFloat
-
-    switch deviceOrientation {
-    case .landscapeLeft:
-      rotationAngle = 180
-    case .landscapeRight:
-      rotationAngle = 0
-    default:
-      rotationAngle = 0  // Default rotation for other orientations
-    }
-
-    if connection.isVideoRotationAngleSupported(rotationAngle) {
-      connection.videoRotationAngle = rotationAngle
-    }
+    orientationManager.applyRotation(to: connection)
   }
 
   override func layoutSubviews() {
@@ -100,5 +87,6 @@ class CameraPreviewView: UIView {
 
   deinit {
     NotificationCenter.default.removeObserver(self)
+    // OrientationManager handles its own lifecycle management
   }
 }

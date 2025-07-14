@@ -26,6 +26,9 @@ class CameraManager: NSObject, ObservableObject {
   // Hand detection service
   private let handDetectionService: HandDetectionService
 
+  // Orientation manager for handling device rotation
+  private let orientationManager = OrientationManager.shared
+
   // Published properties for UI updates
   @Published var isSessionRunning = false
   @Published var permissionGranted = false
@@ -39,9 +42,6 @@ class CameraManager: NSObject, ObservableObject {
 
     // Setup camera session
     setupSession()
-
-    // Setup orientation monitoring
-    setupOrientationMonitoring()
   }
 
   /// Check and request camera permission
@@ -99,7 +99,7 @@ class CameraManager: NSObject, ObservableObject {
     }
 
     // Set initial video orientation based on current device orientation
-    updateVideoOrientation()
+    applyCurrentOrientation()
 
     // Set session quality
     session.sessionPreset = .high
@@ -107,43 +107,10 @@ class CameraManager: NSObject, ObservableObject {
     session.commitConfiguration()
   }
 
-  /// Setup orientation monitoring
-  private func setupOrientationMonitoring() {
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(orientationChanged),
-      name: UIDevice.orientationDidChangeNotification,
-      object: nil
-    )
-
-    // Start device orientation monitoring
-    UIDevice.current.beginGeneratingDeviceOrientationNotifications()
-  }
-
-  /// Handle orientation change
-  @objc private func orientationChanged() {
-    updateVideoOrientation()
-  }
-
-  /// Update video orientation based on current device orientation
-  private func updateVideoOrientation() {
+  /// Apply current orientation to video output connection
+  private func applyCurrentOrientation() {
     guard let connection = videoOutput.connection(with: .video) else { return }
-
-    let deviceOrientation = UIDevice.current.orientation
-    let rotationAngle: CGFloat
-
-    switch deviceOrientation {
-    case .landscapeLeft:
-      rotationAngle = 180
-    case .landscapeRight:
-      rotationAngle = 0
-    default:
-      rotationAngle = 0  // Default rotation for other orientations
-    }
-
-    if connection.isVideoRotationAngleSupported(rotationAngle) {
-      connection.videoRotationAngle = rotationAngle
-    }
+    orientationManager.applyRotation(to: connection)
   }
 
   /// Start camera session
@@ -173,8 +140,7 @@ class CameraManager: NSObject, ObservableObject {
   }
 
   deinit {
-    NotificationCenter.default.removeObserver(self)
-    UIDevice.current.endGeneratingDeviceOrientationNotifications()
+    // Orientation management is handled by OrientationManager.shared
   }
 }
 
